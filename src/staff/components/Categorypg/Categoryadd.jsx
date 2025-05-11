@@ -170,6 +170,7 @@ function Categoryadd() {
     fetchCategories();
   }, [fetchCategories]);
 
+  // FIXED: Updated CategoryCard component with improved text visibility
   const CategoryCard = ({ category }) => (
     <div className="group bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
       <div className="relative aspect-w-16 aspect-h-9 h-64">
@@ -182,11 +183,13 @@ function Categoryadd() {
             e.target.src = 'https://via.placeholder.com/300x200?text=Image+Not+Found';
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-White/30 to-White/70 opacity-80 group-hover:opacity-90 transition-opacity duration-300"></div>
+        {/* Changed gradient overlay to improve text visibility */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black/70 opacity-80 group-hover:opacity-90 transition-opacity duration-300"></div>
         
+        {/* Changed text color to white for better visibility */}
         <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-          <h3 className="text-xl font-semibold mb-1 group-hover:text-gray-300 transition-colors duration-300">{category.name}</h3>
-          <p className="text-sm text-gray-300 line-clamp-2 opacity-80 group-hover:opacity-100 transition-opacity duration-300">{category.description || 'No description provided'}</p>
+          <h3 className="text-xl font-semibold mb-1 group-hover:text-white transition-colors duration-300">{category.name}</h3>
+          <p className="text-sm text-gray-100 line-clamp-2 opacity-90 group-hover:opacity-100 transition-opacity duration-300">{category.description || 'No description provided'}</p>
         </div>
       </div>
       
