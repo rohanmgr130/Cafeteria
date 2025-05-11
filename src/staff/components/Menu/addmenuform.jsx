@@ -164,7 +164,7 @@ function CreateItem() {
           icon: '✅',
           duration: 4000
         });
-        setTimeout(() => navigate('/user-menu'), 1000);
+        setTimeout(() => navigate('/staff-menu'), 1000);
       } else {
         const errorData = await response.json();
         toast.error(`Failed to add menu item: ${errorData.message || 'Unknown error'}`);
@@ -178,7 +178,7 @@ function CreateItem() {
     }
   };
 
-  const itemTypes = ['Vegetarian', 'Non-vegetarian'];
+  const itemTypes = ['Vegetarian', 'Non-vegetarian' , 'Drinks'];
   const menuTypes = ['normal', 'todays-special'];
 
   return (
