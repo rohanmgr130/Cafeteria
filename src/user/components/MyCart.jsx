@@ -30,6 +30,7 @@ const MyCart = () => {
 
       const data = await response.json();
       console.log('Cart data received:', data);
+      localStorage.setItem('cartId',data._id)
       setCartData(data);
       setLoading(false);
     } catch (error) {
