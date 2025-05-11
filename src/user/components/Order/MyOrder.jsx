@@ -40,7 +40,7 @@ const MyOrder = () => {
         }
         try {
             setLoading(true);
-            const response = await fetch(`http://localhost:4000/api/get-cart/${id}`, {
+            const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-cart/${id}`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -77,7 +77,7 @@ const MyOrder = () => {
                 return;
             }
             
-            const response = await fetch("http://localhost:4000/api/order/create-order", {
+            const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/create-order`, {
                 method: 'POST',
                 headers: {
                     "Content-Type": "application/json",
@@ -176,7 +176,7 @@ const MyOrder = () => {
                 orderNote: "Online payment order"
             }));
             
-            const response = await fetch("http://localhost:4000/api/order/create-order", {
+            const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/create-order`, {
                 method: 'POST',
                 body: formData
             });
