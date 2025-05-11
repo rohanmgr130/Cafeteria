@@ -6,6 +6,7 @@ import {
   FaLeaf,
   FaDrumstickBite,
   FaMugHot,
+  FaTag,
 } from 'react-icons/fa';
 
 // Modern Toast implementation without external dependencies
@@ -214,15 +215,44 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
   
   const userId = localStorage.getItem("id");
   const token = localStorage.getItem("token");
-
-  console.log(item)
   
   // Update isFavorite when isFavorited prop changes
   useEffect(() => {
     setIsFavorite(isFavorited);
   }, [isFavorited]);
 
-  // Function to clean category strings
+  // Function to parse and clean categories
+  const parseCategories = useCallback((categories) => {
+    if (!categories) return [];
+    
+    // Handle if categories is already an array
+    if (Array.isArray(categories)) {
+      return categories.map(cat => typeof cat === 'string' ? cat.trim() : String(cat).trim());
+    }
+    
+    // Handle string format like "["category1", "category2"]"
+    if (typeof categories === 'string') {
+      try {
+        // Try to parse as JSON if it looks like JSON
+        if (categories.startsWith('[') && categories.endsWith(']')) {
+          const parsed = JSON.parse(categories);
+          if (Array.isArray(parsed)) {
+            return parsed.map(cat => typeof cat === 'string' ? cat.trim() : String(cat).trim());
+          }
+        }
+        
+        // Handle comma-separated categories
+        return categories.split(',').map(cat => cat.trim().replace(/["'\[\]]/g, ''));
+      } catch (e) {
+        // If JSON parsing fails, treat as comma-separated or single value
+        return categories.split(',').map(cat => cat.trim().replace(/["'\[\]]/g, ''));
+      }
+    }
+    
+    return [];
+  }, []);
+
+  // Function to clean category strings (for backward compatibility)
   const cleanCategoryString = useCallback((category) => {
     if (typeof category === 'string') {
       // Remove brackets, quotes, and extra characters
@@ -444,6 +474,9 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
     }
   }, [handleTokenExpiration, isFavorite, isTogglingFavorite, token, toggleFavorite, userId]);
 
+  // Parse categories into array format
+  const categories = parseCategories(item.categories);
+
   return (
     <div className="group relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl overflow-hidden transform transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl border border-gray-700">
       {/* Menu Type Badge */}
@@ -492,8 +525,20 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
           <div className="ml-2">{item.type && getTypeIcon(item.type)}</div>
         </div>
 
-        {/* Categories - With clean display */}
-       <div>{item.categories}</div>
+        {/* Categories - Improved UI */}
+        {categories && categories.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2 mb-3">
+            {categories.map((category, index) => (
+              <span 
+                key={index} 
+                className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+              >
+                <FaTag className="w-3 h-3 mr-1" />
+                {category}
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* Description - Optional */}
         {item.description && (
