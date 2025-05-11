@@ -84,6 +84,7 @@ const CashPayment = ({ cartTotal, onPlaceOrder, loading, checkoutLoading, cartDe
       setTimeout(() => setPromoStatus(""), 3000);
       setPromoCode("");
       
+      
       // Notify parent component to refresh cart details
       if (refreshCartDetails) {
         refreshCartDetails();

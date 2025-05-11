@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, CheckCircle, Info } from "lucide-react";
 import CashPayment from "./CashPayment";
 import OnlinePayment from "./OnlinePayment";
+import { notifyRoles } from '../../../services/notification.services';
+
 
 const MyOrder = () => {
     const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -84,15 +86,51 @@ const MyOrder = () => {
                     cartId: cartDetails._id,
                     orderMethod: "cash-on",
                     additionalInfo: {
-                        orderNote: "Cash on  order"
+                        orderNote: "Cash on order"
                     }
-                    // No need to manually add promoCode and discount since the cart model 
-                    // automatically adds these and the order creation process copies cart data
                 })
             });
-   
+
             const data = await response.json();
             if(data.success) {
+                // After successful order placement, send notification
+                try {
+                    const name = localStorage.getItem('fullname') || 'User';
+                    
+                    // Extract item information from cart details
+                    const items = cartDetails.items || [];
+                    console.log('items', items);
+                    const itemSummary = items.map(item => ({
+                        name: item.productId.title || item.name || item.title || 'Unknown Item',
+                        quantity: item.quantity || 1,
+                        price: item.price || 0
+                    }));
+                    
+                    // Create notification data object
+                    const notificationData = { 
+                        userId, 
+                        name, 
+                        message: `${name} placed a new cash order with total Rs. ${finalTotal.toFixed(2)}`,
+                        orderInfo: {
+                            orderId: data.orderId || data.order?._id || cartDetails._id,
+                            items: itemSummary,
+                            total: finalTotal,
+                            paymentMethod: 'cash',
+                            timestamp: Date.now()
+                        }
+                    };
+                    
+                    console.log("Preparing to send notification:", notificationData);
+                    
+                    // Send notification
+                    const result = await notifyRoles(['admin', 'staff'], notificationData);
+                    
+                    console.log("✅ Order notification sent, result:", result);
+                } catch (notifError) {
+                    console.error("Failed to send notification:", notifError);
+                    // Don't show toast for notification failure, as the order succeeded
+                }
+                
                 showToast(data.message || "Order placed successfully!", "success");
                 // Wait for toast to be visible before navigating
                 setTimeout(() => {
@@ -108,6 +146,7 @@ const MyOrder = () => {
             setCheckoutLoading(false);
         }
     };
+
 
     // Online khalti payment
     const handleCheckout = async(imageFile) => {
@@ -135,8 +174,6 @@ const MyOrder = () => {
             formData.append('additionalInfo', JSON.stringify({
                 paymentType: "khalti",
                 orderNote: "Online payment order"
-                // No need to manually add promoCode and discount since the cart model
-                // automatically handles this and the order creation process copies cart data
             }));
             
             const response = await fetch("http://localhost:4000/api/order/create-order", {
@@ -146,6 +183,43 @@ const MyOrder = () => {
         
             const data = await response.json();
             if(data.success) {
+                // After successful order placement, send notification
+                try {
+                    const name = localStorage.getItem('fullname') || 'User';
+                    
+                    // Extract item information from cart details
+                    const items = cartDetails.items || [];
+                    const itemSummary = items.map(item => ({
+                        name: item.foodName || item.name || item.title || 'Unknown Item',
+                        quantity: item.quantity || 1,
+                        price: item.price || 0
+                    }));
+                    
+                    // Create notification data object
+                    const notificationData = {
+                        userId,
+                        name, 
+                        message: `${name} placed a new Khalti payment order with total Rs. ${finalTotal.toFixed(2)}`,
+                        orderInfo: {
+                            orderId: data.orderId || data.order?._id || cartDetails._id,
+                            items: itemSummary,
+                            total: finalTotal,
+                            paymentMethod: 'khalti',
+                            timestamp: Date.now()
+                        }
+                    };
+                    
+                    console.log("Preparing to send notification:", notificationData);
+                    
+                    // Send notification
+                    const result = await notifyRoles(['admin', 'staff'], notificationData);
+                    
+                    console.log("✅ Order notification sent, result:", result);
+                } catch (notifError) {
+                    console.error("Failed to send notification:", notifError);
+                    // Don't show toast for notification failure
+                }
+                
                 showToast(data.message || "Order placed successfully!", "success");
                 // Wait for toast to be visible before navigating
                 setTimeout(() => {
@@ -162,7 +236,6 @@ const MyOrder = () => {
         }
     };
 
-    // const handleKhalti = ()
 
     // Refresh cart details if promo code changes
     const refreshCartDetails = () => {
@@ -233,15 +306,15 @@ const MyOrder = () => {
                         </div>
                     </div>
                     
-                    {/* <div 
+                    <div 
                         className={`flex-1 border rounded-lg p-4 cursor-pointer transition-all ${
                             paymentMethod === 'khalti' 
                             ? 'border-blue-500 bg-blue-50' 
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                         onClick={() => setPaymentMethod('khalti')}
-                    > */}
-                        {/* <div className="flex items-center justify-between">
+                    >
+                        <div className="flex items-center justify-between">
                             <div className="flex items-center">
                                 <div className={`w-4 h-4 rounded-full mr-2 ${
                                     paymentMethod === 'online' ? 'bg-blue-500' : 'border border-gray-300'
@@ -249,9 +322,9 @@ const MyOrder = () => {
                                 <span>Khalti</span>
                             </div>
                             <span className="text-gray-500 text-2xl">💳</span>
-                        </div> */}
-                        {/* <button>proceed to payment</button> */}
-                    {/* </div> */}
+                        </div>
+                        <button>proceed to payment</button>
+                    </div>
                 </div>
             </div>
             
