@@ -17,9 +17,14 @@ import Login from "./auth/pages/Login";
 import Register from "./auth/pages/Register";
 import AdminPromoCode from "./admin/Pages/Promocode";
 import AdminStaff from "./admin/Pages/Staff";
-import AdminDashboard from "./admin/component/Home/HomeDashboard";
 import StaffHome from "./staff/Pages/Home";
 import AdminHome from "./admin/Pages/Home";
+import Usermanagement from './admin/Pages/Usermanagement';
+import VerifyEmail from './auth/components/Verifyemail';
+import NotificationPage from './staff/Pages/Notificationpage';
+import AdminNotificationPage from './admin/Pages/Notificationpage';
+import UserNotification from './user/Pages/UserNotificationPage';
+
 
 function App() {
   return (
@@ -31,6 +36,7 @@ function App() {
           {/*all*/}
           <Route path='/login' element={<Login/>} />
           <Route path='/register' element={<Register/>} />
+          <Route path='/verifyemail' element={<VerifyEmail/>} />
 
           {/*user*/}
           <Route path='/user-home' element={<Home/>} />
@@ -40,6 +46,7 @@ function App() {
           <Route path='/user-checkout' element={<Checkout/>} />
           <Route path="/user-profile" element={<UserProfile />} />
           <Route path='/user-favorites' element={<Favorite/>} />
+          <Route path='/user-notification' element={<UserNotification/>} />
 
           {/*staff*/}
           <Route path='/staff-dashboard' element={<StaffHome/>} />
@@ -48,11 +55,15 @@ function App() {
           <Route path='/staff-category' element={<StaffCategoryPage/>} />
           <Route path='/staff-menu/add-menu' element={<CreateItem/>} />
           <Route path='/staff-menu/edit-menu/:id' element={<EditMenu/>} />
+          <Route path='/staff-notification' element={<NotificationPage/>} />
 
           {/*admin*/}
           <Route path='/admin-home' element={<AdminHome/>} />
           <Route path='/admin-staff' element={<AdminStaff/>} />
           <Route path='/admin-promocode' element={<AdminPromoCode/>} />
+          <Route path='/admin-Usermanagement' element={<Usermanagement/>} />
+          <Route path='/admin-notification' element={<AdminNotificationPage/>} />
+
         </Routes>
       </Router>
   );
