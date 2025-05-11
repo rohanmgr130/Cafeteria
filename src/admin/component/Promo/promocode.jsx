@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { broadcastPromocode } from '../../../services/notification.services'; // Adjust path as needed
 
 function Promo() {
    // States for form inputs
@@ -12,6 +12,10 @@ function Promo() {
    const [minOrderValue, setMinOrderValue] = useState('0');
    const [maxDiscountAmount, setMaxDiscountAmount] = useState('');
    const [bulkCount, setBulkCount] = useState('10');
+   
+   // States for notification options
+   const [notifyUsers, setNotifyUsers] = useState(true);
+   const [notificationMessage, setNotificationMessage] = useState('');
    
    // States for data
    const [promoCodes, setPromoCodes] = useState([]);
@@ -72,6 +76,30 @@ function Promo() {
 
       if (res.data.success) {
         setSuccess('Promo code created successfully!');
+        
+        // If notification is enabled, broadcast the promocode to all users
+        if (notifyUsers && res.data.promoCode) {
+          try {
+            const promoData = {
+              code: res.data.promoCode.code,
+              discount: res.data.promoCode.discountType === 'percentage' 
+                ? res.data.promoCode.discountValue / 100 
+                : res.data.promoCode.discountValue,
+              expiry: res.data.promoCode.expiryDate,
+              minPurchase: res.data.promoCode.minOrderValue,
+              maxDiscount: res.data.promoCode.maxDiscountAmount,
+              description: notificationMessage || `New promo code: ${res.data.promoCode.code} for ${res.data.promoCode.discountValue}${res.data.promoCode.discountType === 'percentage' ? '%' : ' Rs.'} off!`
+            };
+            
+            await broadcastPromocode(promoData);
+            setSuccess('Promo code created and notification sent to all users!');
+          } catch (notifError) {
+            console.error('Failed to send promocode notifications:', notifError);
+            // Still show success since the promo code was created
+            setSuccess('Promo code created successfully, but failed to notify users.');
+          }
+        }
+        
         resetForm();
         fetchPromoCodes();
         setView('list');
@@ -104,12 +132,64 @@ function Promo() {
 
       if (res.data.success) {
         setSuccess(`Generated ${bulkCount} promo codes successfully!`);
+        
+        // If notification is enabled and there are codes generated, broadcast the first one
+        if (notifyUsers && res.data.promoCodes && res.data.promoCodes.length > 0) {
+          try {
+            const promoCode = res.data.promoCodes[0]; // Get the first generated code
+            const promoData = {
+              code: promoCode.code,
+              discount: promoCode.discountType === 'percentage' 
+                ? promoCode.discountValue / 100 
+                : promoCode.discountValue,
+              expiry: promoCode.expiryDate,
+              minPurchase: promoCode.minOrderValue,
+              maxDiscount: promoCode.maxDiscountAmount,
+              description: notificationMessage || `New promo code batch available! Use ${promoCode.code} for ${promoCode.discountValue}${promoCode.discountType === 'percentage' ? '%' : ' Rs.'} off!`
+            };
+            
+            await broadcastPromocode(promoData);
+            setSuccess(`Generated ${bulkCount} promo codes and notification sent to all users!`);
+          } catch (notifError) {
+            console.error('Failed to send promocode notifications:', notifError);
+            // Still show success since the promo codes were created
+            setSuccess(`Generated ${bulkCount} promo codes successfully, but failed to notify users.`);
+          }
+        }
+        
         resetForm();
         fetchPromoCodes();
         setView('list');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to generate bulk promo codes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to broadcast an existing promo code
+  const broadcastExistingCode = async (promoCode) => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const promoData = {
+        code: promoCode.code,
+        discount: promoCode.discountType === 'percentage' 
+          ? promoCode.discountValue / 100 
+          : promoCode.discountValue,
+        expiry: promoCode.expiryDate,
+        minPurchase: promoCode.minOrderValue,
+        maxDiscount: promoCode.maxDiscountAmount,
+        description: `Don't miss out! Use promo code ${promoCode.code} for ${promoCode.discountValue}${promoCode.discountType === 'percentage' ? '%' : ' Rs.'} off!`
+      };
+      
+      await broadcastPromocode(promoData);
+      setSuccess(`Notification for promo code ${promoCode.code} sent to all users!`);
+    } catch (err) {
+      setError('Failed to send promocode notification');
+      console.error('Error broadcasting promocode:', err);
     } finally {
       setLoading(false);
     }
@@ -122,7 +202,7 @@ function Promo() {
       setError('');
       setSuccess('');
 
-      const res = await axios.delete(`http://localhost:4000/api/admin/promocode/${id}`, config());
+      const res = await axios.delete(`http://localhost:4000/api/adminpromo/${id}`, config());
 
       if (res.data.success) {
         setSuccess('Promo code deleted successfully!');
@@ -187,6 +267,8 @@ function Promo() {
     setMinOrderValue('0');
     setMaxDiscountAmount('');
     setBulkCount('10');
+    setNotifyUsers(true);
+    setNotificationMessage('');
   };
 
   const formatDate = (dateString) => {
@@ -206,6 +288,7 @@ function Promo() {
         <button onClick={() => setView('create')} className={`px-4 py-2 rounded ${view === 'create' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Create New</button>
         <button onClick={() => setView('bulk')} className={`px-4 py-2 rounded ${view === 'bulk' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Generate Bulk</button>
       </div>
+      
       {/* Create single promo code form */}
       {view === 'create' && (
         <div className="bg-white p-6 rounded shadow-md">
@@ -248,7 +331,7 @@ function Promo() {
               
               <div className="mb-4">
                 <label className="block text-gray-700 mb-2">
-                  Discount Value ({discountType === 'percentage' ? '%' : '$'})
+                  Discount Value ({discountType === 'percentage' ? '%' : 'Rs.'})
                 </label>
                 <input
                   type="number"
@@ -272,7 +355,7 @@ function Promo() {
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 mb-2">Minimum Order Value ($)</label>
+                <label className="block text-gray-700 mb-2">Minimum Order Value (Rs.)</label>
                 <input
                   type="number"
                   value={minOrderValue}
@@ -283,7 +366,7 @@ function Promo() {
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 mb-2">Max Discount Amount ($)</label>
+                <label className="block text-gray-700 mb-2">Max Discount Amount (Rs.)</label>
                 <input
                   type="number"
                   value={maxDiscountAmount}
@@ -292,6 +375,39 @@ function Promo() {
                   placeholder="e.g., 100"
                 />
               </div>
+            </div>
+            
+            {/* Notification options */}
+            <div className="mt-6 border-t pt-4">
+              <h3 className="text-lg font-medium mb-3">Notification Options</h3>
+              
+              <div className="mb-4">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notifyUsers}
+                    onChange={(e) => setNotifyUsers(e.target.checked)}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="ml-2 text-gray-700">Notify all users about this promocode</span>
+                </label>
+              </div>
+              
+              {notifyUsers && (
+                <div className="mb-4">
+                  <label className="block text-gray-700 mb-2">Custom Notification Message (Optional)</label>
+                  <textarea
+                    value={notificationMessage}
+                    onChange={(e) => setNotificationMessage(e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                    placeholder="e.g., Special discount for the summer season! Use code SUMMER20 to get 20% off your order."
+                    rows="3"
+                  ></textarea>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leave blank to use a default message based on the promo code details.
+                  </p>
+                </div>
+              )}
             </div>
             
             <div className="mt-4">
@@ -359,7 +475,7 @@ function Promo() {
               
               <div className="mb-4">
                 <label className="block text-gray-700 mb-2">
-                  Discount Value ({discountType === 'percentage' ? '%' : '$'})
+                  Discount Value ({discountType === 'percentage' ? '%' : 'Rs.'})
                 </label>
                 <input
                   type="number"
@@ -383,7 +499,7 @@ function Promo() {
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 mb-2">Minimum Order Value ($)</label>
+                <label className="block text-gray-700 mb-2">Minimum Order Value (Rs.)</label>
                 <input
                   type="number"
                   value={minOrderValue}
@@ -394,7 +510,7 @@ function Promo() {
               </div>
               
               <div className="mb-4">
-                <label className="block text-gray-700 mb-2">Max Discount Amount ($)</label>
+                <label className="block text-gray-700 mb-2">Max Discount Amount (Rs.)</label>
                 <input
                   type="number"
                   value={maxDiscountAmount}
@@ -403,6 +519,42 @@ function Promo() {
                   placeholder="e.g., 100"
                 />
               </div>
+            </div>
+            
+            {/* Notification options */}
+            <div className="mt-6 border-t pt-4">
+              <h3 className="text-lg font-medium mb-3">Notification Options</h3>
+              
+              <div className="mb-4">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notifyUsers}
+                    onChange={(e) => setNotifyUsers(e.target.checked)}
+                    className="form-checkbox h-5 w-5 text-blue-600"
+                  />
+                  <span className="ml-2 text-gray-700">Notify all users about these promocodes</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 ml-7">
+                  Note: Only one notification will be sent for the first code in the batch.
+                </p>
+              </div>
+              
+              {notifyUsers && (
+                <div className="mb-4">
+                  <label className="block text-gray-700 mb-2">Custom Notification Message (Optional)</label>
+                  <textarea
+                    value={notificationMessage}
+                    onChange={(e) => setNotificationMessage(e.target.value)}
+                    className="w-full px-3 py-2 border rounded"
+                    placeholder="e.g., New batch of promo codes available! Get your discount today."
+                    rows="3"
+                  ></textarea>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leave blank to use a default message based on the promo code details.
+                  </p>
+                </div>
+              )}
             </div>
             
             <div className="mt-4">
@@ -447,9 +599,9 @@ function Promo() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div>
-                <p><strong>Discount:</strong> {selectedPromoCode.discountValue}{selectedPromoCode.discountType === 'percentage' ? '%' : ' $'}</p>
-                <p><strong>Minimum Order:</strong> ${selectedPromoCode.minOrderValue}</p>
-                <p><strong>Max Discount Amount:</strong> {selectedPromoCode.maxDiscountAmount ? `$${selectedPromoCode.maxDiscountAmount}` : 'No limit'}</p>
+                <p><strong>Discount:</strong> {selectedPromoCode.discountValue}{selectedPromoCode.discountType === 'percentage' ? '%' : ' Rs.'}</p>
+                <p><strong>Minimum Order:</strong> Rs. {selectedPromoCode.minOrderValue}</p>
+                <p><strong>Max Discount Amount:</strong> {selectedPromoCode.maxDiscountAmount ? `Rs. ${selectedPromoCode.maxDiscountAmount}` : 'No limit'}</p>
               </div>
               <div>
                 <p><strong>Expiry Date:</strong> {formatDate(selectedPromoCode.expiryDate)}</p>
@@ -464,6 +616,23 @@ function Promo() {
                 <p><strong>Used By:</strong> {selectedPromoCode.usedBy?.name || 'N/A'}</p>
                 <p><strong>Email:</strong> {selectedPromoCode.usedBy?.email || 'N/A'}</p>
                 <p><strong>Used On:</strong> {selectedPromoCode.usedAt ? formatDate(selectedPromoCode.usedAt) : 'N/A'}</p>
+              </div>
+            )}
+            
+            {/* Add broadcast option */}
+            {!selectedPromoCode.isUsed && selectedPromoCode.isActive && (
+              <div className="mt-6 pt-4 border-t">
+                <h3 className="font-semibold mb-2">Broadcast Notification</h3>
+                <p className="text-sm text-gray-600 mb-3">
+                  Send a notification about this promo code to all users.
+                </p>
+                <button
+                  onClick={() => broadcastExistingCode(selectedPromoCode)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+                  disabled={loading}
+                >
+                  {loading ? 'Sending...' : 'Broadcast to All Users'}
+                </button>
               </div>
             )}
           </div>
@@ -501,7 +670,7 @@ function Promo() {
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block text-gray-700 mb-2">Minimum Order Value ($)</label>
+                  <label className="block text-gray-700 mb-2">Minimum Order Value (Rs.)</label>
                   <input
                     type="number"
                     value={selectedPromoCode.minOrderValue}
@@ -514,7 +683,7 @@ function Promo() {
                 </div>
                 
                 <div className="mb-4">
-                  <label className="block text-gray-700 mb-2">Max Discount Amount ($)</label>
+                  <label className="block text-gray-700 mb-2">Max Discount Amount (Rs.)</label>
                   <input
                     type="number"
                     value={selectedPromoCode.maxDiscountAmount || ''}
@@ -582,7 +751,7 @@ function Promo() {
                     <td className="px-6 py-4 whitespace-nowrap font-medium">{promoCode.code}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {promoCode.discountValue}
-                      {promoCode.discountType === 'percentage' ? '%' : ' $'}
+                      {promoCode.discountType === 'percentage' ? '%' : ' Rs.'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 rounded-full text-xs ${
@@ -610,6 +779,18 @@ function Promo() {
                       >
                         View
                       </button>
+                      
+                      {/* Add broadcast button for active, unused codes */}
+                      {!promoCode.isUsed && promoCode.isActive && (
+                        <button
+                          onClick={() => broadcastExistingCode(promoCode)}
+                          className="text-purple-600 hover:text-purple-900 mr-3"
+                          title="Notify all users about this promo code"
+                        >
+                          Broadcast
+                        </button>
+                      )}
+                      
                       {!promoCode.isUsed && (
                         <button
                           onClick={() => deletePromoCode(promoCode._id)}
