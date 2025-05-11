@@ -318,7 +318,7 @@ const RegisterPage = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [errors, setErrors] = useState({});
 
-  const API_BASE_URL = "http://localhost:4000/api";
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -403,7 +403,7 @@ const RegisterPage = () => {
         role: "user",
       };
 
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, payload);
+      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, payload);
       
       // Set success message
       setSuccessMessage("Please check your email to verify your account.");

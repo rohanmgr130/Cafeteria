@@ -10,7 +10,7 @@ const MenuHome = () => {
   const handleGetAllMenu = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://localhost:4000/api/staff/get-all-menu`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/staff/get-all-menu`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

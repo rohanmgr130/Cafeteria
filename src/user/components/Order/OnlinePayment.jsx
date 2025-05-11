@@ -540,7 +540,7 @@ const OnlinePayment = ({ cartTotal, onCheckout, loading, checkoutLoading, cartDe
 
     setFetchingCart(true);
     try {
-      const response = await fetch(`http://localhost:4000/api/get-cart/${cartId}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-cart/${cartId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -646,7 +646,7 @@ const OnlinePayment = ({ cartTotal, onCheckout, loading, checkoutLoading, cartDe
 
       showToast("Connecting to payment gateway...", "info");
 
-      const response = await fetch("http://localhost:4000/api/khalti/initiate", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/khalti/initiate`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json"
@@ -702,7 +702,7 @@ const OnlinePayment = ({ cartTotal, onCheckout, loading, checkoutLoading, cartDe
 
     try {
       // Make API call to validate and apply the promo code
-      const response = await fetch('http://localhost:4000/api/apply-promo-code', {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/apply-promo-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

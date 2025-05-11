@@ -17,7 +17,7 @@ const MyCart = () => {
     }
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:4000/api/get-cart/${id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/get-cart/${id}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -75,7 +75,7 @@ const MyCart = () => {
       });
       
       // Make API call to update the server
-      const response = await fetch('http://localhost:4000/api/update-cart-item', {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/update-cart-item`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ const MyCart = () => {
       });
       
       // Make API call to remove the item from the server
-      const response = await fetch('http://localhost:4000/api/remove-from-cart', {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/remove-from-cart`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,7 +153,7 @@ const MyCart = () => {
     
     try {
       // Make API call to validate and apply the promo code
-      const response = await fetch('http://localhost:4000/api/apply-promo-code', {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/apply-promo-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -281,12 +281,12 @@ const MyCart = () => {
                     <div className="w-full sm:w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
                       {item.productId && item.productId.image && (
                         <img 
-                          src={`http://localhost:4000${item.productId.image}`} 
+                          src={`${process.env.REACT_APP_API_BASE_URL}${item.productId.image}`} 
                           alt={item.productId && item.productId.title ? item.productId.title : 'Product'} 
                           className="w-full h-full object-cover"
                           onError={(e) => {
                             e.target.onerror = null; 
-                            e.target.src = 'http://localhost:4000/uploads/default-food.png';
+                            e.target.src = `${process.env.REACT_APP_API_BASE_URL}/uploads/default-food.png`;
                           }}
                         />
                       )}

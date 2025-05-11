@@ -290,13 +290,13 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
     
     // Check if the path already includes '/uploads/'
     if (imagePath.startsWith('/uploads/')) {
-      return `http://localhost:4000${imagePath}`;
+      return `${process.env.REACT_APP_API_BASE_URL}${imagePath}`;
     } else if (imagePath.includes('/uploads/')) {
       // This handles cases where the full path might be stored
-      return `http://localhost:4000${imagePath.substring(imagePath.indexOf('/uploads/'))}`;
+      return `${process.env.REACT_APP_API_BASE_URL}${imagePath.substring(imagePath.indexOf('/uploads/'))}`;
     } else {
       // Just append the path to the uploads directory
-      return `http://localhost:4000/uploads/${imagePath}`;
+      return `${process.env.REACT_APP_API_BASE_URL}/uploads/${imagePath}`;
     }
   }, []);
 
@@ -323,7 +323,7 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
     setIsAddingToCart(true);
     
     try {
-      const response = await fetch("http://localhost:4000/api/add-to-cart", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/add-to-cart`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -376,7 +376,7 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
     try {
       // If already favorite, remove it
       if (isFavorite) {
-        const response = await fetch("http://localhost:4000/api/favorites/remove", {
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/favorites/remove`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
@@ -404,7 +404,7 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
       } 
       // If not favorite, add it
       else {
-        const response = await fetch("http://localhost:4000/api/favorites/add", {
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/favorites/add`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -55,7 +55,7 @@ const CashPayment = ({ cartTotal, onPlaceOrder, loading, checkoutLoading, cartDe
     
     try {
       // Make API call to validate and apply the promo code
-      const response = await fetch('http://localhost:4000/api/apply-promo-code', {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/apply-promo-code`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

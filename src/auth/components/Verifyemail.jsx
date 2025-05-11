@@ -206,7 +206,7 @@ const VerifyEmail = () => {
       setStatus('verifying');
       console.log('Sending verification request with token:', token);
       
-      const response = await axios.post(`http://localhost:4000/api/auth/verify/email/${token}`);
+      const response = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/auth/verify/email/${token}`);
       
       console.log('Verification response:', response.data);
       if (response.data.success) {

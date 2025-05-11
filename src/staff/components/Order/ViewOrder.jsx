@@ -165,7 +165,7 @@ const ViewOrder = () => {
       params.append('sortOrder', sortConfig.direction);
       
       // Fetch orders from the API
-      const response = await fetch(`http://localhost:4000/api/order/get-all-orders?${params.toString()}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/get-all-orders?${params.toString()}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -187,7 +187,7 @@ const ViewOrder = () => {
         
         // Pre-fetch all users with a single API call if possible
         try {
-          const userResponse = await fetch(`http://localhost:4000/api/users`, {
+          const userResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/users`, {
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${localStorage.getItem('token')}`
@@ -208,7 +208,7 @@ const ViewOrder = () => {
         
         // Pre-fetch all products with a single API call if possible
         try {
-          const productResponse = await fetch(`http://localhost:4000/api/staff/menu`, {
+          const productResponse = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/staff/menu`, {
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${localStorage.getItem('token')}`
@@ -232,7 +232,7 @@ const ViewOrder = () => {
           if (!id) return null;
           
           try {
-            const res = await fetch(`http://localhost:4000/api/users/${id}`, {
+            const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/users/${id}`, {
               method: "GET",
               headers: {
                 "Content-Type": "application/json",
@@ -374,7 +374,7 @@ const ViewOrder = () => {
       console.log('newStatus', newStatus);
       setLoading(true);
       
-      const response = await fetch(`http://localhost:4000/api/order/update-order/${id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/update-order/${id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -452,7 +452,7 @@ const ViewOrder = () => {
     try {
       setLoading(true);
       
-      const response = await fetch(`http://localhost:4000/api/order/update-order/${editingOrder.id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/update-order/${editingOrder.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -497,7 +497,7 @@ const ViewOrder = () => {
     try {
       setLoading(true);
       
-      const response = await fetch(`http://localhost:4000/api/order/delete/${id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/delete/${id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -538,7 +538,7 @@ const ViewOrder = () => {
       
       // Since your backend might not have a bulk delete endpoint, we'll delete orders one by one
       const deletePromises = selectedOrders.map(orderId => 
-        fetch(`http://localhost:4000/api/order/delete/${orderId}`, {
+        fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/delete/${orderId}`, {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",

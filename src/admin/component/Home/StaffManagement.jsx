@@ -45,14 +45,14 @@ const StaffManagement = () => {
   const getToken = () => localStorage.getItem('token');
 
   // API base URL - This is the correct base URL to work with our routes
-  const API_URL = "http://localhost:4000/api";
+  const API_URL = process.env.REACT_APP_API_BASE_URL
 
   // API service functions
   const staffService = {
     // Get all staff members
     getAllStaff: async () => {
       try {
-        const response = await axios.get(`${API_URL}/users/staff/all`, {
+        const response = await axios.get(`${API_URL}/api/users/staff/all`, {
           headers: {
             Authorization: `Bearer ${getToken()}`
           }
@@ -67,7 +67,7 @@ const StaffManagement = () => {
     // Get staff by type
     getStaffByType: async (type) => {
       try {
-        const response = await axios.get(`${API_URL}/users/staff/${type}`, {
+        const response = await axios.get(`${API_URL}/api/users/staff/${type}`, {
           headers: {
             Authorization: `Bearer ${getToken()}`
           }
@@ -99,7 +99,7 @@ const StaffManagement = () => {
     // Update staff member
     updateStaff: async (id, staffData) => {
       try {
-        const response = await axios.put(`${API_URL}/users/${id}`, staffData, {
+        const response = await axios.put(`${API_URL}/api/users/${id}`, staffData, {
           headers: {
             Authorization: `Bearer ${getToken()}`
           }
@@ -114,7 +114,7 @@ const StaffManagement = () => {
     // Delete staff member
     deleteStaff: async (id) => {
       try {
-        const response = await axios.delete(`${API_URL}/users/${id}`, {
+        const response = await axios.delete(`${API_URL}/api/users/${id}`, {
           headers: {
             Authorization: `Bearer ${getToken()}`
           }

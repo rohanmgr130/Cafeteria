@@ -39,7 +39,7 @@ function Promo() {
   const fetchPromoCodes = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:4000/api/adminpromo/get-all-code`, config());
+      const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/get-all-code`, config());
       if (res.data.success) {
         setPromoCodes(res.data.promoCodes);
         setTotalPages(res.data.totalPages);
@@ -72,7 +72,7 @@ function Promo() {
         maxDiscountAmount: maxDiscountAmount ? Number(maxDiscountAmount) : null,
       };
 
-      const res = await axios.post(`http://localhost:4000/api/adminpromo/create`, data, config());
+      const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/create`, data, config());
 
       if (res.data.success) {
         setSuccess('Promo code created successfully!');
@@ -128,7 +128,7 @@ function Promo() {
         maxDiscountAmount: maxDiscountAmount ? Number(maxDiscountAmount) : null,
       };
 
-      const res = await axios.post(`http://localhost:4000/api/adminpromo/generate-bulk`, data, config());
+      const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/generate-bulk`, data, config());
 
       if (res.data.success) {
         setSuccess(`Generated ${bulkCount} promo codes successfully!`);
@@ -202,7 +202,7 @@ function Promo() {
       setError('');
       setSuccess('');
 
-      const res = await axios.delete(`http://localhost:4000/api/adminpromo/${id}`, config());
+      const res = await axios.delete(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/${id}`, config());
 
       if (res.data.success) {
         setSuccess('Promo code deleted successfully!');
@@ -219,7 +219,7 @@ function Promo() {
     try {
       setLoading(true);
       setError('');
-      const res = await axios.get(`http://localhost:4000/api/adminpromo/${id}`, config());
+      const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/${id}`, config());
       if (res.data.success) {
         setSelectedPromoCode(res.data.promoCode);
         setView('detail');
@@ -244,7 +244,7 @@ function Promo() {
         maxDiscountAmount: selectedPromoCode.maxDiscountAmount,
       };
 
-      const res = await axios.put(`http://localhost:4000/api/adminpromo/${selectedPromoCode._id}`, data, config());
+      const res = await axios.put(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/${selectedPromoCode._id}`, data, config());
 
       if (res.data.success) {
         setSuccess('Promo code updated successfully!');

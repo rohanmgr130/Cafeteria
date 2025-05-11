@@ -398,7 +398,7 @@ function EditMenu() {
 
   const navigate = useNavigate();
   const { id } = useParams();
-  const API_BASE_URL = 'http://localhost:4000';
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL
 
   // Fetch categories with error handling and retry
   const fetchCategories = useCallback(async (retry = true) => {

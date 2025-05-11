@@ -20,7 +20,7 @@ function UserManagement() {
       setLoading(true);
       const token = localStorage.getItem('token'); // Assuming you store auth token in localStorage
       
-      const response = await axios.get('http://localhost:4000/api/users', {
+      const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/users`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -46,7 +46,7 @@ function UserManagement() {
       const token = localStorage.getItem('token');
       
       // Use full URL including the base URL
-      const response = await axios.delete(`http://localhost:4000/api/users/${userId}`, {
+      const response = await axios.delete(`${process.env.REACT_APP_API_BASE_URL}/api/users/${userId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

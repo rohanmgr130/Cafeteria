@@ -17,7 +17,7 @@ function Categoryadd() {
   const [imagePreview, setImagePreview] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const API_BASE_URL = 'http://localhost:4000/api/category';
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL
 
   // Handle input field changes
   const handleChange = (e) => {
@@ -91,7 +91,7 @@ function Categoryadd() {
 
       let res;
       if (editMode) {
-        res = await axios.put(`${API_BASE_URL}/${currentCategoryId}`, data);
+        res = await axios.put(`${API_BASE_URL}/api/category/${currentCategoryId}`, data);
       } else {
         res = await axios.post(API_BASE_URL, data);
       }
@@ -112,7 +112,7 @@ function Categoryadd() {
   const fetchCategories = useCallback(async (retry = true) => {
     setFetchLoading(true);
     try {
-      const res = await axios.get(`${API_BASE_URL}/get-all-category`);
+      const res = await axios.get(`${API_BASE_URL}/api/category/get-all-category`);
       setCategories(res.data.categories || []);
     } catch (err) {
       console.error("Failed to load categories", err);
@@ -134,7 +134,7 @@ function Categoryadd() {
       description: category.description || '',
       image: null // We don't set the actual file here
     });
-    setImagePreview(`http://localhost:4000${category.image}`);
+    setImagePreview(`${API_BASE_URL}/${category.image}`);
     setEditMode(true);
     setCurrentCategoryId(category._id);
     
@@ -175,7 +175,7 @@ function Categoryadd() {
     <div className="group bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
       <div className="relative aspect-w-16 aspect-h-9 h-64">
         <img
-          src={`http://localhost:4000${category.image}`}
+          src={`${API_BASE_URL}${category.image}`}
           alt={category.name}
           className="h-full w-full object-cover transform group-hover:scale-110 transition-all duration-700 ease-in-out"
           onError={(e) => {

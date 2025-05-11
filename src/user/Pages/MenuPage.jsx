@@ -88,7 +88,7 @@ const OurMenu = () => {
       const isCurrentlyFavorite = favorites.includes(itemId);
       const endpoint = isCurrentlyFavorite ? 'remove' : 'add';
       
-      const response = await fetch(`http://localhost:4000/api/favorites/${endpoint}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/favorites/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ const OurMenu = () => {
   const addToCart = async (item) => {
     try {
       // Make the POST request to the backend
-      const response = await fetch("http://localhost:4000/api/cart/add", {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/cart/add`, {
         method: "POST",
         headers: {  
           "Content-Type": "application/json",
@@ -152,7 +152,7 @@ const OurMenu = () => {
   const handleGetAllMenu = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`http://localhost:4000/api/staff/get-all-menu`, {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/staff/get-all-menu`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

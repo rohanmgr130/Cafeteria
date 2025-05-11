@@ -371,7 +371,8 @@ function MenuManage() {
   const [fetchLoading, setFetchLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const API_BASE_URL = 'http://localhost:4000'
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL
+  console.log(API_BASE_URL)
   const itemsPerPage = 5
 
   // Fetch categories with error handling and retry

@@ -22,7 +22,7 @@ const OrderHistory = () => {
       if (!userId) return;
       
       try {
-        const res = await fetch(`http://localhost:4000/api/profile/profile/${userId}`, {
+        const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/profile/profile/${userId}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -68,7 +68,7 @@ const OrderHistory = () => {
       try {
         setLoading(true);
         // First, try to get all orders by user ID
-        const res = await fetch(`http://localhost:4000/api/order/my-orders/${userId}`, {
+        const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/my-orders/${userId}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -126,7 +126,7 @@ const OrderHistory = () => {
     }
     
     try {
-      const res = await fetch(`http://localhost:4000/api/order/delete/${orderId}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/delete/${orderId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -171,7 +171,7 @@ const OrderHistory = () => {
       // First log the orderId to make sure it's correct
       console.log("Fetching details for order:", orderId);
       
-      const res = await fetch(`http://localhost:4000/api/order/${orderId}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/${orderId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -527,7 +527,7 @@ const OrderHistory = () => {
                     <div className="mt-6">
                       <h3 className="font-medium text-gray-700 mb-2">Payment Screenshot</h3>
                       <img 
-                        src={`http://localhost:4000/${orderDetails[selectedOrder].screenshot}`} 
+                        src={`${process.env.REACT_APP_API_BASE_URL}/${orderDetails[selectedOrder].screenshot}`} 
                         alt="Payment screenshot" 
                         className="max-w-full h-auto border rounded-lg"
                       />

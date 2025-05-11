@@ -50,7 +50,7 @@ export default function UserProfile() {
       });
   
       // Fetch user profile
-      const response = await axios.get(`http://localhost:4000/api/profile/profile/${id}`, {
+      const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/profile/profile/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -125,7 +125,7 @@ export default function UserProfile() {
       
       // Send update request to your existing backend route
       const response = await axios.put(
-        `${process.env.REACT_APP_API_URL}/api/users/${userId}`, 
+        `${process.env.REACT_APP_API_BASE_URL}/api/users/${userId}`, 
         updatedData,
         {
           headers: {
