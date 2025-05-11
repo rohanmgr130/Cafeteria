@@ -10,9 +10,51 @@ const OrderHistory = () => {
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [userData, setUserData] = useState(null);
 
-  // Fetch user ID from localStorage
+  // Fetch user ID and token from localStorage
   const userId = localStorage.getItem("id");
+  const token = localStorage.getItem("token");
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!userId) return;
+      
+      try {
+        const res = await fetch(`http://localhost:4000/api/profile/profile/${userId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          setUserData(data.user);
+        }
+      } catch (err) {
+        console.error("Error fetching user data:", err);
+      }
+    };
+    
+    fetchUserData();
+  }, [userId, token]);
+
+  // Debug selected order details
+  useEffect(() => {
+    if (selectedOrder && orderDetails[selectedOrder]) {
+      console.log("Selected order details:", orderDetails[selectedOrder]);
+      if (orderDetails[selectedOrder].cartData && orderDetails[selectedOrder].cartData.items) {
+        console.log("Items array:", orderDetails[selectedOrder].cartData.items);
+        orderDetails[selectedOrder].cartData.items.forEach((item, index) => {
+          console.log(`Item ${index} details:`, item);
+          console.log(`Item ${index} productId:`, item.productId);
+        });
+      }
+    }
+  }, [selectedOrder, orderDetails]);
 
   // Create a custom order history structure if it doesn't exist in backend
   useEffect(() => {
@@ -30,6 +72,7 @@ const OrderHistory = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
           },
         });
         
@@ -66,7 +109,7 @@ const OrderHistory = () => {
     };
 
     getOrderHistory();
-  }, [userId]);
+  }, [userId, token]);
 
   // Handle deleting an order from history
   const handleDeleteOrder = async (orderId) => {
@@ -74,19 +117,29 @@ const OrderHistory = () => {
       return;
     }
     
+    // Get the authentication token from localStorage
+    const token = localStorage.getItem("token");
+    
+    if (!token) {
+      alert("Authentication token not found. Please log in again.");
+      return;
+    }
+    
     try {
-      const res = await fetch(`http://localhost:4000/api/order/${orderId}`, {
+      const res = await fetch(`http://localhost:4000/api/order/delete/${orderId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         }
       });
       
+      const data = await res.json();
+      
       if (!res.ok) {
-        throw new Error("Failed to delete order");
+        throw new Error(data.message || "Failed to delete order");
       }
       
-      const data = await res.json();
       console.log("Order deleted:", data);
       
       // Remove order from local state
@@ -103,7 +156,7 @@ const OrderHistory = () => {
       }
     } catch (err) {
       console.error("Error deleting order:", err);
-      alert("Error deleting order. Please try again.");
+      alert(`Error deleting order: ${err.message}`);
     }
   };
 
@@ -112,23 +165,49 @@ const OrderHistory = () => {
     setSelectedOrder(orderId);
     setViewModalOpen(true);
     
-    // Optionally fetch the latest details from the server
     try {
-      // Correct endpoint
+      const token = localStorage.getItem("token");
+      
+      // First log the orderId to make sure it's correct
+      console.log("Fetching details for order:", orderId);
+      
       const res = await fetch(`http://localhost:4000/api/order/${orderId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
       });
+      
+      // Log the raw response for debugging
+      console.log("Response status:", res.status);
+      
       const data = await res.json();
+      console.log("Order API response:", data);
       
       if (data.success && data.order) {
-        // Update this specific order's details with fresh data
+        // Process the items to ensure they have names
+        if (data.order.cartData && data.order.cartData.items) {
+          data.order.cartData.items = data.order.cartData.items.map((item, index) => {
+            // If we don't have a proper name, add a fallback
+            if ((!item.productId || typeof item.productId !== 'object' || !item.productId.name) && 
+                !item.name && !item.productName) {
+              return {
+                ...item,
+                productName: `Product #${index + 1}`
+              };
+            }
+            return item;
+          });
+        }
+        
+        // Update order details with processed data
         setOrderDetails(prevDetails => ({
           ...prevDetails,
           [orderId]: data.order
         }));
+      } else {
+        console.error("API returned success false or no order data");
       }
     } catch (err) {
       console.error("Error fetching order details:", err);
@@ -161,6 +240,23 @@ const OrderHistory = () => {
   const closeModal = () => {
     setViewModalOpen(false);
     setSelectedOrder(null);
+  };
+
+  // Get user name to display - IMPROVED to use fullname from localStorage if API data is not available
+  const getUserName = () => {
+    // First try to get the name from userData (API response)
+    if (userData && userData.fullname) {
+      return userData.fullname;
+    }
+    
+    // Fallback to localStorage fullname if API data is not available
+    const localFullname = localStorage.getItem("fullname");
+    if (localFullname) {
+      return localFullname;
+    }
+    
+    // Last resort fallback
+    return "User";
   };
 
   if (loading) {
@@ -214,7 +310,7 @@ const OrderHistory = () => {
               <table className="min-w-full table-auto">
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="py-3 px-6 text-left text-sm font-medium text-gray-600">Order ID</th>
+                    <th className="py-3 px-6 text-left text-sm font-medium text-gray-600">User</th>
                     <th className="py-3 px-6 text-left text-sm font-medium text-gray-600">Date</th>
                     <th className="py-3 px-6 text-left text-sm font-medium text-gray-600">Items</th>
                     <th className="py-3 px-6 text-left text-sm font-medium text-gray-600">Total Amount</th>
@@ -229,7 +325,7 @@ const OrderHistory = () => {
                     return (
                       <tr key={orderId} className="border-t hover:bg-gray-50">
                         <td className="py-4 px-6 text-sm text-gray-800 font-medium">
-                          #{orderId.substring(orderId.length - 8)}
+                          {getUserName()}
                         </td>
                         <td className="py-4 px-6 text-sm text-gray-600">
                           {formatDate(order.createdAt)}
@@ -353,22 +449,44 @@ const OrderHistory = () => {
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
-                            {orderDetails[selectedOrder].cartData.items.map((item, index) => (
-                              <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                                  {item.productId ? (typeof item.productId === 'object' ? item.productId.name : "Product Item") : "Unknown Item"}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                  {item.productQuantity || 1}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                  {formatCurrency(item.price)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                                  {formatCurrency(item.total)}
-                                </td>
-                              </tr>
-                            ))}
+                            {orderDetails[selectedOrder].cartData.items.map((item, index) => {
+                              // Determine the item name based on available data
+                              let itemName = "Unknown Item";
+                              
+                              // Check various possibilities for where the name might be
+                              if (item.productId) {
+                                if (typeof item.productId === 'object' && item.productId !== null) {
+                                  // If productId is populated as an object
+                                  itemName = item.productId.name || item.productId.title || `Product #${index + 1}`;
+                                } else {
+                                  // If productId is just an ID
+                                  itemName = `Product #${index + 1}`;
+                                }
+                              } else if (item.name) {
+                                // If name is directly on the item
+                                itemName = item.name;
+                              } else if (item.productName) {
+                                // If productName is on the item
+                                itemName = item.productName;
+                              }
+                              
+                              return (
+                                <tr key={index}>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                                    {itemName}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {item.productQuantity || 1}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                    {formatCurrency(item.price)}
+                                  </td>
+                                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                                    {formatCurrency(item.total)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                           <tfoot className="bg-gray-50">
                             <tr>

@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaSearch, FaEdit, FaCheck, FaTimes, FaPrint, FaExclamationTriangle, FaImage, FaTrash, FaFilter, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaSearch, FaEdit, FaCheck, FaTimes, FaPrint, FaExclamationTriangle, FaTrash, FaFilter, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { notifyOrderStatusUpdate } from '../../../services/notification.services'; // Update path as needed
 
 // Create styles for PDF
 const pdfStyles = StyleSheet.create({
@@ -101,7 +102,6 @@ const ViewOrder = () => {
   const [editingOrder, setEditingOrder] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [viewingPaymentImage, setViewingPaymentImage] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
   const [pagination, setPagination] = useState({ currentPage: 1, itemsPerPage: 10, totalItems: 0 });
   const [isAdvancedFilterVisible, setIsAdvancedFilterVisible] = useState(false);
@@ -110,10 +110,12 @@ const ViewOrder = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [userData, setUserData] = useState(null);
 
-  // Status options
-  const statusOptions = ["All", "New", "Confirmed", "Preparing", "Ready", "Cancelled"];
-  const paymentMethodOptions = ["All", "khalti", "cash"];
+
+  // Status options - updated to match backend enum values
+  const statusOptions = ["Pending", "Completed", "Cancelled", "Verified", "Preparing"];
+  const paymentMethodOptions = ["All", "khalti", "cash-on"];
 
   // Fetch orders when component mounts or filters change
   useEffect(() => {
@@ -179,32 +181,58 @@ const ViewOrder = () => {
       
       // Check if we received valid data
       if (data && data.success && Array.isArray(data.orders)) {
-        // Create a map to store and fetch user information
+        // Create map to cache user and product info to minimize individual fetches
         const userMap = new Map();
-        // Create a map to store and fetch product information
         const productMap = new Map();
         
-        // Collect all unique user IDs and product IDs
-        const userIds = new Set();
-        const productIds = new Set();
-        
-        data.orders.forEach(order => {
-          if (order.cartId && order.cartId.userId) {
-            userIds.add(order.cartId.userId);
+        // Pre-fetch all users with a single API call if possible
+        try {
+          const userResponse = await fetch(`http://localhost:4000/api/users`, {
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${localStorage.getItem('token')}`
+            },
+          });
+          
+          if (userResponse.ok) {
+            const usersData = await userResponse.json();
+            if (usersData.users && Array.isArray(usersData.users)) {
+              usersData.users.forEach(user => {
+                userMap.set(user._id, user.name || user.email || "Unknown User");
+              });
+            }
           }
-          if (order.cartId && Array.isArray(order.cartId.items)) {
-            order.cartId.items.forEach(item => {
-              if (item.productId) {
-                productIds.add(item.productId);
-              }
-            });
-          }
-        });
+        } catch (error) {
+          console.log("Error pre-fetching users:", error);
+        }
         
-        // Fetch user information
-        const userPromises = Array.from(userIds).map(async (userId) => {
+        // Pre-fetch all products with a single API call if possible
+        try {
+          const productResponse = await fetch(`http://localhost:4000/api/staff/menu`, {
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${localStorage.getItem('token')}`
+            },
+          });
+          
+          if (productResponse.ok) {
+            const productsData = await productResponse.json();
+            if (productsData.menus && Array.isArray(productsData.menus)) {
+              productsData.menus.forEach(product => {
+                productMap.set(product._id, product.name || "Unknown Product");
+              });
+            }
+          }
+        } catch (error) {
+          console.log("Error pre-fetching products:", error);
+        }
+        
+        // First, define the function to fetch user data outside of the loop
+        const fetchUserData = async (id) => {
+          if (!id) return null;
+          
           try {
-            const userResponse = await fetch(`http://localhost:4000/api/users/${userId}`, {
+            const res = await fetch(`http://localhost:4000/api/users/${id}`, {
               method: "GET",
               headers: {
                 "Content-Type": "application/json",
@@ -212,72 +240,85 @@ const ViewOrder = () => {
               },
             });
             
-            if (userResponse.ok) {
-              const userData = await userResponse.json();
-              userMap.set(userId, userData.name || "Unknown User");
-            } else {
-              userMap.set(userId, "Unknown User");
+            const data = await res.json();
+            if (data.success) {
+              return data.data;
             }
-          } catch (error) {
-            console.log(`Error fetching user ${userId}:`, error);
-            userMap.set(userId, "Unknown User");
+          } catch (err) {
+            console.error("Error fetching user data:", err);
           }
-        });
-        
-        // Fetch product information
-        const productPromises = Array.from(productIds).map(async (productId) => {
-          try {
-            const productResponse = await fetch(`http://localhost:4000/api/products/${productId}`, {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${localStorage.getItem('token')}`
-              },
-            });
-            
-            if (productResponse.ok) {
-              const productData = await productResponse.json();
-              productMap.set(productId, productData.name || "Unknown Product");
-            } else {
-              productMap.set(productId, "Unknown Product");
-            }
-          } catch (error) {
-            console.log(`Error fetching product ${productId}:`, error);
-            productMap.set(productId, "Unknown Product");
-          }
-        });
-        
-        // Wait for all user and product data to be fetched
-        await Promise.all([...userPromises, ...productPromises]);
-        
+          return null;
+        };
+
         // Transform the data into the orders format we need
-        const transformedOrders = data.orders.map(order => {
-          // Get items from the cart with product names
-          const cartItems = order.cartId && Array.isArray(order.cartId.items) 
-            ? order.cartId.items.map(item => ({
-                name: productMap.get(item.productId) || `Product ID: ${item.productId}`,
+        const transformedOrders = await Promise.all(data.orders.map(async order => {
+          // Use fullname from localStorage for customer display
+          
+          // Fetch user data for this order
+          let userData = null;
+          if (order.cartData && order.cartData.userId) {
+            userData = await fetchUserData(order.cartData.userId);
+          }
+
+          console.log('userdata', userData);
+          
+          const customerName = userData?.fullname || 'xaina';
+          const customerId = userData._id;
+
+          // Process the cart items with real product names
+          const cartItems = [];
+          
+          if (order.cartData && Array.isArray(order.cartData.items)) {
+            for (const item of order.cartData.items) {
+             
+              let productName = "Unknown Product";
+              
+              // Attempt to get the real product name if possible
+              // if (item.productId && productMap.has(item.productId)) {
+              //   productName = productMap.get(item.productId);
+              // } else if (item.productName) {
+              //   productName = item.productName;
+              // }
+
+              if (item.productId) {
+                productName = item.productId.title;
+              }
+              
+              cartItems.push({
+                name: productName,
                 quantity: item.productQuantity || 1,
                 price: `Rs ${item.price || 0}`
-              }))
-            : [];
+              });
+            }
+          }
+          
+          // Determine payment status based on payment method and khalti status
+          let paymentStatus = "Pending";
+          if (order.orderMethod === "khalti") {
+            if (order.khaltiPayment && order.khaltiPayment.status === "completed") {
+              paymentStatus = "Paid";
+            } else if (order.khaltiPayment && order.khaltiPayment.status === "failed") {
+              paymentStatus = "Failed";
+            }
+          }
           
           return {
             id: order._id || `#ORD-${Math.floor(Math.random() * 10000)}`,
-            customer: userMap.get(order.cartId?.userId) || `User ID: ${order.cartId?.userId || 'Unknown'}`,
+            customer: userData?.fullname || customerName,
+            customerId: customerId,
             items: cartItems,
-            total: `Rs ${order.cartId?.finalTotal || 0}`,
-            status: order.orderStatus || "New",
+            total: `Rs ${order.cartData?.finalTotal || 0}`,
+            status: order.orderStatus || "Pending",
             createdAt: order.createdAt || Date.now(),
             time: new Date(order.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             date: new Date(order.createdAt || Date.now()).toLocaleDateString(),
-            paymentStatus: order.orderMethod === "khalti" ? "Paid" : "Pending",
-            notes: order.notes || "",
-            paymentMethod: order.orderMethod || "cash",
-            paymentImageUrl: order.screenshot ? `http://localhost:4000/${order.screenshot}` : null,
-            phone: order.phone || "",
-            address: order.address || ""
+            paymentStatus: paymentStatus,
+            notes: order.additionalInfo?.notes || "",
+            paymentMethod: order.orderMethod || "cash-on",
+            phone: order.additionalInfo?.phone || userData?.phone || "",
+            address: order.additionalInfo?.address || userData?.address || ""
           };
-        });
+        }));
         
         setOrders(transformedOrders);
         setPagination({
@@ -301,10 +342,11 @@ const ViewOrder = () => {
   // Get status badge color
   const getStatusColor = (status) => {
     switch(status) {
-      case "New": return "bg-blue-500";
       case "Confirmed": return "bg-purple-500";
       case "Preparing": return "bg-yellow-500";
       case "Ready": return "bg-green-500";
+      case "Completed": return "bg-green-600";
+      case "Verified": return "bg-blue-500";
       case "Cancelled": return "bg-red-500";
       default: return "bg-gray-500";
     }
@@ -318,6 +360,8 @@ const ViewOrder = () => {
       order.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.items.some(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
   });
+  console.log('orders', orders);
+  console.log('filteredOrders', filteredOrders);
 
   // Toggle order details
   const toggleOrderDetails = (id) => {
@@ -325,30 +369,68 @@ const ViewOrder = () => {
   };
 
   // Update order status
-  const updateStatus = async (id, newStatus) => {
+  const updateStatus = async (id, newStatus, customerId) => {
     try {
+      console.log('newStatus', newStatus);
       setLoading(true);
       
-      const response = await fetch(`http://localhost:4000/api/update-order-status/${id}`, {
-        method: "PUT",
+      const response = await fetch(`http://localhost:4000/api/order/update-order/${id}`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ orderStatus: newStatus }),
       });
       
       if (!response.ok) {
         throw new Error("Failed to update order status");
       }
       
+      // Find the order that was updated
+      const updatedOrder = orders.find(order => order.id === id);
+      
       // Update the local state
       setOrders(orders.map(order => 
         order.id === id ? { ...order, status: newStatus } : order
       ));
       
+      // Send notification to the user if order has user data
+      // First, we need to get the userId from the order
+      console.log('updatedOrder', updatedOrder);
+      if (updatedOrder) {
+        try {
+          // Check where the userId is stored in your order object
+          const id = customerId;
+          console.log('customerId', customerId);
+          console.log('updatedOrder', updatedOrder); 
+          
+          if (id) {
+            // Prepare the order data for notification
+            const orderData = {
+              orderId: id,
+              status: newStatus,
+              items: updatedOrder.items,
+              total: updatedOrder.total.replace(/[^0-9.]/g, '') // Remove non-numeric characters
+            };
+            
+            // Send the notification
+            await notifyOrderStatusUpdate(id, orderData);
+            console.log(`Notification sent to user ${id} about order status: ${newStatus}`);
+            
+            // Add notification success message to toast
+            toast.success(`Order status updated to ${newStatus} and user notified`);
+          } else {
+            console.log("No userId found in order. Notification not sent.");
+            toast.success(`Order status updated to ${newStatus}`);
+          }
+        } catch (notifError) {
+          console.error("Error sending notification:", notifError);
+          toast.warning(`Order status updated to ${newStatus}, but failed to notify user`);
+        }
+      }
+      
       setLoading(false);
-      toast.success(`Order status updated to ${newStatus}`);
     } catch (error) {
       console.log("Error updating order status: ", error);
       setError("Failed to update order status");
@@ -370,13 +452,20 @@ const ViewOrder = () => {
     try {
       setLoading(true);
       
-      const response = await fetch(`http://localhost:4000/api/update-order/${editingOrder.id}`, {
+      const response = await fetch(`http://localhost:4000/api/order/update-order/${editingOrder.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${localStorage.getItem('token')}`
         },
-        body: JSON.stringify(editingOrder),
+        body: JSON.stringify({
+          orderStatus: editingOrder.status,
+          additionalInfo: {
+            phone: editingOrder.phone,
+            address: editingOrder.address,
+            notes: editingOrder.notes
+          }
+        }),
       });
       
       if (!response.ok) {
@@ -408,7 +497,7 @@ const ViewOrder = () => {
     try {
       setLoading(true);
       
-      const response = await fetch(`http://localhost:4000/api/delete-order/${id}`, {
+      const response = await fetch(`http://localhost:4000/api/order/delete/${id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -447,18 +536,18 @@ const ViewOrder = () => {
     try {
       setLoading(true);
       
-      const response = await fetch(`http://localhost:4000/api/bulk-delete-orders`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ orderIds: selectedOrders }),
-      });
+      // Since your backend might not have a bulk delete endpoint, we'll delete orders one by one
+      const deletePromises = selectedOrders.map(orderId => 
+        fetch(`http://localhost:4000/api/order/delete/${orderId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+      );
       
-      if (!response.ok) {
-        throw new Error("Failed to delete orders");
-      }
+      await Promise.all(deletePromises);
       
       // Update the local state
       setOrders(orders.filter(order => !selectedOrders.includes(order.id)));
@@ -473,16 +562,6 @@ const ViewOrder = () => {
       setLoading(false);
       toast.error("Failed to delete orders. Please try again.");
     }
-  };
-
-  // View payment image
-  const openPaymentImage = (imageUrl) => {
-    setViewingPaymentImage(imageUrl);
-  };
-
-  // Close payment image modal
-  const closePaymentImage = () => {
-    setViewingPaymentImage(null);
   };
 
   // Toggle selection of an order
@@ -574,8 +653,7 @@ const ViewOrder = () => {
   const endIndex = Math.min(startIndex + pagination.itemsPerPage - 1, pagination.totalItems);
 
   return (
-    <div
-      className=" ml-64 p-8 bg-gray-50 min-h-screen w-full">
+    <div className="ml-64 p-8 bg-gray-50 min-h-screen w-full">
       <ToastContainer position="top-right" autoClose={3000} />
       
       <div className="max-w-7xl mx-auto">
@@ -648,7 +726,7 @@ const ViewOrder = () => {
           
           <div className="bg-white rounded-lg shadow p-4 border-l-4 border-yellow-500">
             <div className="text-sm text-gray-500 mb-1">Pending Orders</div>
-            <div className="text-2xl font-bold">{orders.filter(o => o.status === "New" || o.status === "Confirmed").length}</div>
+            <div className="text-2xl font-bold">{orders.filter(o => o.status === "Pending" || o.status === "Confirmed").length}</div>
           </div>
           
           <div className="bg-white rounded-lg shadow p-4 border-l-4 border-purple-500">
@@ -731,7 +809,7 @@ const ViewOrder = () => {
                 >
                   <option value="All">All Methods</option>
                   <option value="khalti">Online Payment (Khalti)</option>
-                  <option value="cash">Cash on Delivery</option>
+                  <option value="cash-on">Cash on Delivery</option>
                 </select>
               </div>
               
@@ -757,390 +835,365 @@ const ViewOrder = () => {
               </div>
             </div>
           )}
+          
           {/* Orders Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-2 py-3 text-left">
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={selectAll}
-                        onChange={() => setSelectAll(!selectAll)}
-                        className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('id')}
-                  >
-                    <div className="flex items-center">
-                      Order Info
-                      {getSortIcon('id')}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Items
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('total')}
-                  >
-                    <div className="flex items-center">
-                      Total
-                      {getSortIcon('total')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
-                    onClick={() => requestSort('status')}
-                  >
-                    <div className="flex items-center">
-                      Status
-                      {getSortIcon('status')}
-                    </div>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Payment
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {!loading && filteredOrders.length > 0 ? (
-                  filteredOrders.map((order) => (
-                    <React.Fragment key={order.id}>
-                      <tr className={`hover:bg-gray-50 ${selectedOrders.includes(order.id) ? 'bg-blue-50' : ''}`}>
-                        <td className="px-2 py-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedOrders.includes(order.id)}
-                            onChange={() => toggleOrderSelection(order.id)}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
-                          <div className="flex items-center">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">{order.id}</div>
-                              <div className="text-sm text-gray-500">{order.customer}</div>
-                              <div className="text-xs text-gray-500">{order.date} at {order.time}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
-                          <div className="text-sm text-gray-900">
-                            {order.items.slice(0, 2).map((item, idx) => (
-                              <div key={idx}>
-                                {item.quantity}x {item.name}
-                              </div>
-                            ))}
-                            {order.items.length > 2 && (
-                              <div className="text-xs text-gray-500">
-                                +{order.items.length - 2} more items
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
-                          <div className="text-sm font-medium text-gray-900">{order.total}</div>
-                          <div className="text-xs text-gray-500">{order.paymentStatus}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white ${getStatusColor(order.status)}`}>
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex space-x-2">
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                startEditing(order);
-                              }}
-                              className="text-blue-600 hover:text-blue-900 p-1"
-                              title="Edit Order"
-                            >
-                              <FaEdit />
-                            </button>
-                            <PDFDownloadLink 
-                              document={<OrderPDF order={order} />}
-                              fileName={`order-${order.id}.pdf`}
-                              className="text-green-600 hover:text-green-900 p-1"
-                              title="Download PDF"
+          <div className="bg-white rounded-lg shadow overflow-hidden mt-4">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-2 py-3 text-left">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectAll}
+                          onChange={() => setSelectAll(!selectAll)}
+                          className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                      </div>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer">
+                      <div className="flex items-center">
+                        CUSTOMER INFO
+                      </div>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Items
+                    </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort('total')}
+                    >
+                      <div className="flex items-center">
+                        Total
+                        {getSortIcon('total')}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                      onClick={() => requestSort('status')}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        {getSortIcon('status')}
+                      </div>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Payment
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {!loading && filteredOrders.length > 0 ? (
+                    filteredOrders.map((order) => (
+                      <React.Fragment key={order.id}>
+                        <tr className={`hover:bg-gray-50 ${selectedOrders.includes(order.id) ? 'bg-blue-50' : ''}`}>
+                          <td className="px-2 py-4">
+                            <input
+                              type="checkbox"
+                              checked={selectedOrders.includes(order.id)}
+                              onChange={() => toggleOrderSelection(order.id)}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                               onClick={(e) => e.stopPropagation()}
-                            >
-                              {({ blob, url, loading, error }) => 
-                                loading ? <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" /> : <FaPrint />
-                              }
-                            </PDFDownloadLink>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteOrder(order.id);
-                              }}
-                              className="text-red-600 hover:text-red-900 p-1"
-                              title="Delete Order"
-                            >
-                              <FaTrash />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {(order.paymentMethod === "online" || order.paymentMethod === "khalti") && order.paymentImageUrl ? (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openPaymentImage(order.paymentImageUrl);
-                              }}
-                              className="text-green-600 hover:text-green-900 flex items-center"
-                            >
-                              <FaImage className="mr-1" />
-                              <span>View Receipt</span>
-                            </button>
-                          ) : (
-                            <span className="text-orange-500">Cash on Delivery</span>
-                          )}
-                        </td>
-                      </tr>
-
-                      {/* Expanded Order Details */}
-                      {expandedOrderId === order.id && (
-                        <tr>
-                          <td colSpan="7" className="px-6 py-4 bg-gray-50">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {/* Customer Details */}
+                            />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
+                            <div className="flex items-center">
                               <div>
-                                <h3 className="font-semibold text-gray-800 mb-2">Customer Information</h3>
-                                <p className="text-sm"><span className="font-medium">Name:</span> {order.customer}</p>
-                                <p className="text-sm"><span className="font-medium">Phone:</span> {order.phone || "Not provided"}</p>
-                                <p className="text-sm"><span className="font-medium">Address:</span> {order.address || "Not provided"}</p>
-                                <p className="text-sm"><span className="font-medium">Order Date:</span> {order.date} at {order.time}</p>
-                              </div>
-
-                              {/* Order Items */}
-                              <div>
-                                <h3 className="font-semibold text-gray-800 mb-2">Order Items</h3>
-                                <div className="space-y-1">
-                                  {order.items.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between text-sm">
-                                      <span>{item.quantity}x {item.name}</span>
-                                      <span>{item.price}</span>
-                                    </div>
-                                  ))}
-                                  <div className="flex justify-between font-semibold text-sm pt-2 border-t">
-                                    <span>Total</span>
-                                    <span>{order.total}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Order Actions */}
-                              <div>
-                                <h3 className="font-semibold text-gray-800 mb-2">Update Status</h3>
-                                <div className="grid grid-cols-2 gap-2">
-                                  {statusOptions.filter(s => s !== "All").map(status => (
-                                    <button
-                                      key={status}
-                                      onClick={() => updateStatus(order.id, status)}
-                                      className={`px-2 py-1 text-xs rounded ${
-                                        order.status === status 
-                                          ? `${getStatusColor(status)} text-white` 
-                                          : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                                      }`}
-                                    >
-                                      {status}
-                                    </button>
-                                  ))}
-                                </div>
-                                
-                                <div className="mt-4">
-                                  <h3 className="font-semibold text-gray-800 mb-2">Payment Information</h3>
-                                  <p className="text-sm"><span className="font-medium">Method:</span> {(order.paymentMethod === "online" || order.paymentMethod === "khalti") ? "Online Payment (Khalti)" : "Cash on Delivery"}</p>
-                                  <p className="text-sm"><span className="font-medium">Status:</span> {order.paymentStatus}</p>
-                                  
-                                  {(order.paymentMethod === "online" || order.paymentMethod === "khalti") && order.paymentImageUrl && (
-                                    <button
-                                      onClick={() => openPaymentImage(order.paymentImageUrl)}
-                                      className="mt-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded flex items-center"
-                                    >
-                                      <FaImage className="mr-1" />
-                                      View Payment Receipt
-                                    </button>
-                                  )}
-                                </div>
-                                
-                                {order.notes && (
-                                  <div className="mt-4">
-                                    <h3 className="font-semibold text-gray-800 mb-2">Notes</h3>
-                                    <div className="bg-yellow-50 p-2 rounded border border-yellow-200 text-sm flex">
-                                      <FaExclamationTriangle className="text-yellow-500 mr-2 flex-shrink-0 mt-1" />
-                                      <p>{order.notes}</p>
-                                    </div>
-                                  </div>
-                                )}
+                                <div className="text-sm font-medium text-gray-900">{order.customer}</div>
+                                <div className="text-xs text-gray-500">{order.date} at {order.time}</div>
                               </div>
                             </div>
                           </td>
+                          <td className="px-6 py-4 cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
+                            <div className="text-sm text-gray-900">
+                              {order.items.slice(0, 2).map((item, idx) => (
+                                <div key={idx}>
+                                  {item.quantity}x {item.name}
+                                </div>
+                              ))}
+                              {order.items.length > 2 && (
+                                <div className="text-xs text-gray-500">
+                                  +{order.items.length - 2} more items
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
+                            <div className="text-sm font-medium text-gray-900">{order.total}</div>
+                            <div className="text-xs text-gray-500">{order.paymentStatus}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap cursor-pointer" onClick={() => toggleOrderDetails(order.id)}>
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white ${getStatusColor(order.status)}`}>
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex space-x-2">
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(order);
+                                }}
+                                className="text-blue-600 hover:text-blue-900 p-1"
+                                title="Edit Order"
+                              >
+                                <FaEdit />
+                              </button>
+                              <PDFDownloadLink 
+                                document={<OrderPDF order={order} />}
+                                fileName={`order-${order.id}.pdf`}
+                                className="text-green-600 hover:text-green-900 p-1"
+                                title="Download PDF"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {({ blob, url, loading, error }) => 
+                                  loading ? <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" /> : <FaPrint />
+                                }
+                              </PDFDownloadLink>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteOrder(order.id);
+                                }}
+                                className="text-red-600 hover:text-red-900 p-1"
+                                title="Delete Order"
+                              >
+                                <FaTrash />
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={order.paymentMethod === "khalti" ? "text-green-600" : "text-orange-500"}>
+                              {order.paymentMethod === "khalti" ? "Online Payment" : "Cash on Delivery"}
+                            </span>
+                          </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  ))
-                ) : !loading ? (
-                  <tr>
-                    <td colSpan="7" className="px-6 py-10 text-center text-gray-500">
-                      No orders found matching your filters. Try adjusting your search criteria.
-                    </td>
-                  </tr>
-                ) : (
-                  // Loading skeleton for the table
-                  Array.from({ length: 5 }).map((_, index) => (
-                    <tr key={`skeleton-${index}`}>
-                      <td className="px-2 py-4">
-                        <Skeleton circle height={16} width={16} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton height={20} width={120} className="mb-2" />
-                        <Skeleton height={16} width={150} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton height={16} width={180} className="mb-2" />
-                        <Skeleton height={16} width={100} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton height={20} width={80} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton height={20} width={70} />
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex space-x-2">
-                          <Skeleton circle height={20} width={20} />
-                          <Skeleton circle height={20} width={20} />
-                          <Skeleton circle height={20} width={20} />
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Skeleton height={20} width={100} />
+
+                        {/* Expanded Order Details */}
+                        {expandedOrderId === order.id && (
+                          <tr>
+                            <td colSpan="7" className="px-6 py-4 bg-gray-50">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Customer Details - Simplified */}
+                                <div>
+                                  <p className="text-sm font-medium text-gray-800 mb-2">Customer Information</p>
+                                  <p className="text-sm"><span className="font-medium">Name:</span> {order.customer}</p>
+                                  <p className="text-sm"><span className="font-medium">Order Date:</span> {order.date} at {order.time}</p>
+                                </div>
+
+                                {/* Order Items */}
+                                <div>
+                                  <h3 className="font-semibold text-gray-800 mb-2">Order Items</h3>
+                                  <div className="space-y-1">
+                                    {order.items.map((item, idx) => (
+                                      <div key={idx} className="flex justify-between text-sm">
+                                        <span>{item.quantity}x {item.name}</span>
+                                        <span>{item.price}</span>
+                                      </div>
+                                    ))}
+                                    <div className="flex justify-between font-semibold text-sm pt-2 border-t">
+                                      <span>Total</span>
+                                      <span>{order.total}</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Order Actions */}
+                                <div>
+                                  <h3 className="font-semibold text-gray-800 mb-2">Update Status</h3>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {statusOptions.filter(s => s !== "All").map(status => (
+                                      <button
+                                        key={status}
+                                        onClick={() => updateStatus(order.id, status, order.customerId)}
+                                        className={`px-2 py-1 text-xs rounded ${
+                                          order.status === status 
+                                            ? `${getStatusColor(status)} text-white` 
+                                            : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                                        }`}
+                                      >
+                                        {status}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  
+                                  <div className="mt-4">
+                                    <h3 className="font-semibold text-gray-800 mb-2">Payment Information</h3>
+                                    <p className="text-sm"><span className="font-medium">Method:</span> {order.paymentMethod === "khalti" ? "Online Payment (Khalti)" : "Cash on Delivery"}</p>
+                                    <p className="text-sm"><span className="font-medium">Status:</span> {order.paymentStatus}</p>
+                                    
+                                  </div>
+                                  
+                                  {order.notes && (
+                                    <div className="mt-4">
+                                      <h3 className="font-semibold text-gray-800 mb-2">Notes</h3>
+                                      <div className="bg-yellow-50 p-2 rounded border border-yellow-200 text-sm flex">
+                                        <FaExclamationTriangle className="text-yellow-500 mr-2 flex-shrink-0 mt-1" />
+                                        <p>{order.notes}</p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))
+                  ) : !loading ? (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-10 text-center text-gray-500">
+                        No orders found matching your filters. Try adjusting your search criteria.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Pagination */}
-          {filteredOrders.length > 0 && (
-            <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-gray-700">
-                    Showing <span className="font-medium">{startIndex}</span> to <span className="font-medium">{endIndex}</span> of{' '}
-                    <span className="font-medium">{pagination.totalItems}</span> orders
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    <button
-                      onClick={() => handlePageChange(1)}
-                      disabled={pagination.currentPage === 1}
-                      className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
-                        pagination.currentPage === 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className="sr-only">First</span>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={pagination.currentPage === 1}
-                      className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
-                        pagination.currentPage === 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className="sr-only">Previous</span>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    
-                    {/* Page numbers */}
-                    {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-                      let pageNum;
+                  ) : (
+                    // Loading skeleton for the table
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <tr key={`skeleton-${index}`}>
+                        <td className="px-2 py-4">
+                          <Skeleton circle height={16} width={16} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <Skeleton height={20} width={120} className="mb-2" />
+                          <Skeleton height={16} width={150} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <Skeleton height={16} width={180} className="mb-2" />
+                          <Skeleton height={16} width={100} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <Skeleton height={20} width={80} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <Skeleton height={20} width={70} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex space-x-2">
+                            <Skeleton circle height={20} width={20} />
+                            <Skeleton circle height={20} width={20} />
+                            <Skeleton circle height={20} width={20} />
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <Skeleton height={20} width={100} />
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Pagination */}
+            {filteredOrders.length > 0 && (
+              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      Showing <span className="font-medium">{startIndex}</span> to <span className="font-medium">{endIndex}</span> of{' '}
+                      <span className="font-medium">{pagination.totalItems}</span> orders
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => handlePageChange(1)}
+                        disabled={pagination.currentPage === 1}
+                        className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${
+                          pagination.currentPage === 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="sr-only">First</span>
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(pagination.currentPage - 1)}
+                        disabled={pagination.currentPage === 1}
+                        className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
+                          pagination.currentPage === 1 ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="sr-only">Previous</span>
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
                       
-                      if (totalPages <= 5) {
-                        // If 5 or fewer pages, show all
-                        pageNum = i + 1;
-                      } else if (pagination.currentPage <= 3) {
-                        // Near start
-                        pageNum = i + 1;
-                      } else if (pagination.currentPage >= totalPages - 2) {
-                        // Near end
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        // In middle
-                        pageNum = pagination.currentPage - 2 + i;
-                      }
+                      {/* Page numbers */}
+                      {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                        let pageNum;
+                        
+                        if (totalPages <= 5) {
+                          // If 5 or fewer pages, show all
+                          pageNum = i + 1;
+                        } else if (pagination.currentPage <= 3) {
+                          // Near start
+                          pageNum = i + 1;
+                        } else if (pagination.currentPage >= totalPages - 2) {
+                          // Near end
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          // In middle
+                          pageNum = pagination.currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium ${
+                              pagination.currentPage === pageNum
+                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                : 'bg-white text-gray-500 hover:bg-gray-50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
                       
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => handlePageChange(pageNum)}
-                          className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium ${
-                            pagination.currentPage === pageNum
-                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                              : 'bg-white text-gray-500 hover:bg-gray-50'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                    
-                    <button
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={pagination.currentPage === totalPages}
-                      className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
-                        pagination.currentPage === totalPages ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className="sr-only">Next</span>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => handlePageChange(totalPages)}
-                      disabled={pagination.currentPage === totalPages}
-                      className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
-                        pagination.currentPage === totalPages ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span className="sr-only">Last</span>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </nav>
+                      <button
+                        onClick={() => handlePageChange(pagination.currentPage + 1)}
+                        disabled={pagination.currentPage === totalPages}
+                        className={`relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium ${
+                          pagination.currentPage === totalPages ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="sr-only">Next</span>
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(totalPages)}
+                        disabled={pagination.currentPage === totalPages}
+                        className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${
+                          pagination.currentPage === totalPages ? 'text-gray-300' : 'text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="sr-only">Last</span>
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </nav>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -1150,7 +1203,7 @@ const ViewOrder = () => {
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Edit Order {editingOrder.id}</h2>
+                <h2 className="text-xl font-bold">Edit Order for {editingOrder.customer}</h2>
                 <button onClick={cancelEditing} className="text-gray-500 hover:text-gray-700">
                   <FaTimes />
                 </button>
@@ -1165,6 +1218,7 @@ const ViewOrder = () => {
                     className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editingOrder.customer}
                     onChange={(e) => setEditingOrder({...editingOrder, customer: e.target.value})}
+                    disabled // Usually can't edit customer name without backend support
                   />
                 </div>
 
@@ -1209,71 +1263,35 @@ const ViewOrder = () => {
                     className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={editingOrder.paymentStatus}
                     onChange={(e) => setEditingOrder({...editingOrder, paymentStatus: e.target.value})}
+                    disabled={editingOrder.paymentMethod === "khalti"} // Can't edit Khalti payment status directly
                   >
                     <option value="Paid">Paid</option>
                     <option value="Pending">Pending</option>
                     <option value="Failed">Failed</option>
                     <option value="Refunded">Refunded</option>
                   </select>
+                  {editingOrder.paymentMethod === "khalti" && (
+                    <p className="text-xs text-gray-500 mt-1">Online payment status is managed automatically</p>
+                  )}
                 </div>
 
-                {/* Order Items */}
+                {/* Order Items - read only as editing cart items would require more complex logic */}
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">Order Items</label>
-                  {editingOrder.items.map((item, index) => (
-                    <div key={index} className="flex items-center space-x-2 mb-2">
-                      <input
-                        type="number"
-                        className="w-16 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={item.quantity}
-                        min="1"
-                        onChange={(e) => {
-                          const newItems = [...editingOrder.items];
-                          newItems[index].quantity = parseInt(e.target.value) || 1;
-                          setEditingOrder({...editingOrder, items: newItems});
-                        }}
-                      />
-                      <input
-                        type="text"
-                        className="flex-grow p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={item.name}
-                        onChange={(e) => {
-                          const newItems = [...editingOrder.items];
-                          newItems[index].name = e.target.value;
-                          setEditingOrder({...editingOrder, items: newItems});
-                        }}
-                      />
-                      <input
-                          type="text"
-                          className="w-24 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          value={item.price}
-                          onChange={(e) => {
-                        const newItems = [...editingOrder.items];
-                        newItems[index].price = e.target.value;
-                        setEditingOrder({ ...editingOrder, items: newItems });
-                        }}
-                      />
-
-                      <button
-                        className="p-2 text-red-500 hover:text-red-700"
-                        onClick={() => {
-                          const newItems = editingOrder.items.filter((_, i) => i !== index);
-                          setEditingOrder({...editingOrder, items: newItems});
-                        }}
-                      >
-                        <FaTimes />
-                      </button>
+                  <div className="border rounded p-3 bg-gray-50">
+                    {editingOrder.items.map((item, index) => (
+                      <div key={index} className="flex items-center space-x-2 mb-2">
+                        <span className="w-12 text-center">{item.quantity}x</span>
+                        <span className="flex-grow">{item.name}</span>
+                        <span className="w-24 text-right">{item.price}</span>
+                      </div>
+                    ))}
+                    <div className="border-t pt-2 mt-2 font-medium flex justify-between">
+                      <span>Total:</span>
+                      <span>{editingOrder.total}</span>
                     </div>
-                  ))}
-                  <button
-                    className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                    onClick={() => {
-                      const newItems = [...editingOrder.items, { name: "", quantity: 1, price: "Rs 0.00" }];
-                      setEditingOrder({...editingOrder, items: newItems});
-                    }}
-                  >
-                    Add Item
-                  </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Items cannot be modified after order creation</p>
                 </div>
 
                 {/* Notes */}
@@ -1282,7 +1300,7 @@ const ViewOrder = () => {
                   <textarea
                     className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows="3"
-                    value={editingOrder.notes}
+                    value={editingOrder.notes || ""}
                     onChange={(e) => setEditingOrder({...editingOrder, notes: e.target.value})}
                   ></textarea>
                 </div>
@@ -1306,36 +1324,6 @@ const ViewOrder = () => {
           </div>
         </div>
       )}
-
-      {/* Payment Image Modal */}
-      {viewingPaymentImage && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Payment Receipt</h2>
-              <button onClick={closePaymentImage} className="text-gray-500 hover:text-gray-700">
-                <FaTimes size={24} />
-              </button>
-            </div>
-            <div className="bg-gray-100 p-2 rounded-lg">
-              <img 
-                src={viewingPaymentImage} 
-                alt="Payment Receipt" 
-                className="max-w-full mx-auto max-h-96 object-contain"
-              />
-            </div>
-            <div className="mt-4 text-center">
-              <button
-                onClick={closePaymentImage}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      </div>
     </div>
   );
 };
