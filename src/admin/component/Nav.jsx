@@ -73,7 +73,7 @@ const Nav = () => {
 
         <div className="py-2">
           <p className="text-xs uppercase text-gray-400 font-semibold ml-2 mb-2">Management</p>
-          <Link to="/admin-orders">
+          <Link to="/admin-orderhistory">
             <div className={`flex items-center space-x-4 p-3 rounded-md hover:bg-gray-700 transition-all duration-200 ${isActive('/admin-orders')}`}>
               <div className="w-8 flex justify-center">
                 <FaShoppingCart className="text-xl" />

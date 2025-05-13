@@ -8,13 +8,13 @@ const getImageUrl = (imagePath) => {
   
   // Check if the path already includes '/uploads/'
   if (imagePath.startsWith('/uploads/')) {
-    return `http://localhost:4000${imagePath}`;
+    return `${process.env.REACT_APP_API_BASE_URL}${imagePath}`;
   } else if (imagePath.includes('/uploads/')) {
     // Handle cases where the full path might be stored
-    return `http://localhost:4000${imagePath.substring(imagePath.indexOf('/uploads/'))}`;
+    return `${process.env.REACT_APP_API_BASE_URL}${imagePath.substring(imagePath.indexOf('/uploads/'))}`;
   } else {
     // Just append the path to the uploads directory
-    return `http://localhost:4000/uploads/${imagePath}`;
+    return `${process.env.REACT_APP_API_BASE_URL}/uploads/${imagePath}`;
   }
 };
 

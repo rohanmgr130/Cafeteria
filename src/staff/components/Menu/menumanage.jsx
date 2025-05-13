@@ -616,7 +616,7 @@ function MenuManage() {
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="h-12 w-12 rounded-lg bg-gray-100 overflow-hidden">
                             {item.image ? (
-                              <img src={`http://localhost:4000${item.image}`} alt={item.title} className="h-full w-full object-cover" />
+                              <img src={`${API_BASE_URL}${item.image}`} alt={item.title} className="h-full w-full object-cover" />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center text-gray-500 text-xs">No IMG</div>
                             )}

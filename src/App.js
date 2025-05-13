@@ -24,6 +24,7 @@ import VerifyEmail from './auth/components/Verifyemail';
 import NotificationPage from './staff/Pages/Notificationpage';
 import AdminNotificationPage from './admin/Pages/Notificationpage';
 import UserNotification from './user/Pages/UserNotificationPage';
+import AdminOrderHistoryPage from './admin/Pages/Orderdetails';
 
 
 function App() {
@@ -63,6 +64,7 @@ function App() {
           <Route path='/admin-promocode' element={<AdminPromoCode/>} />
           <Route path='/admin-Usermanagement' element={<Usermanagement/>} />
           <Route path='/admin-notification' element={<AdminNotificationPage/>} />
+          <Route path='/admin-orderhistory' element={<AdminOrderHistoryPage/>} />
 
         </Routes>
       </Router>
