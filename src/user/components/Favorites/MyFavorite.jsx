@@ -239,7 +239,7 @@ function MyFavorite() {
 
       try {
         setIsLoading(true);
-        const response = await axios.get(`${API_BASE_URL}/favorites/favorites`, {
+        const response = await axios.get(`${API_BASE_URL}/api/favourite/user-favorites`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
@@ -419,7 +419,7 @@ function MyFavorite() {
     setRemovingItems(prev => new Set(prev).add(id));
     
     try {
-      const response = await axios.delete(`${API_BASE_URL}/favorites/remove`, {
+      const response = await axios.delete(`${API_BASE_URL}/api/favourite/remove`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
