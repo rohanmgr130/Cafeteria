@@ -272,13 +272,6 @@ const ViewOrder = () => {
             for (const item of order.cartData.items) {
              
               let productName = "Unknown Product";
-              
-              // Attempt to get the real product name if possible
-              // if (item.productId && productMap.has(item.productId)) {
-              //   productName = productMap.get(item.productId);
-              // } else if (item.productName) {
-              //   productName = item.productName;
-              // }
 
               if (item.productId) {
                 productName = item.productId.title;

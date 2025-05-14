@@ -419,7 +419,7 @@ function MyFavorite() {
     setRemovingItems(prev => new Set(prev).add(id));
     
     try {
-      const response = await axios.delete(`${API_BASE_URL}/api/favourite/remove`, {
+      const response = await axios.delete(`${API_BASE_URL}/api/favorite/remove`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'

@@ -83,7 +83,7 @@ const StaffManagement = () => {
     createStaff: async (staffData) => {
       try {
         console.log("Creating staff with data:", staffData); // Debug log
-        const response = await axios.post(`${API_URL}/users`, staffData, {
+        const response = await axios.post(`${API_URL}/api/users/add-staff`, staffData, {
           headers: {
             Authorization: `Bearer ${getToken()}`
           }

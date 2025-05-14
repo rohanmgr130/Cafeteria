@@ -404,7 +404,7 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
       } 
       // If not favorite, add it
       else {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/favorites/add`, {
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/favorite/add`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
