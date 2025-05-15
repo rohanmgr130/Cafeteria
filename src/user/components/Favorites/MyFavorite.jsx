@@ -106,27 +106,27 @@ const FavoriteItem = memo(({ item, onRemove, onAddToCart, onViewDetails, isRemov
           <p className="text-gray-600 dark:text-gray-400 text-sm mb-3 line-clamp-2">{item.description}</p>
         )}
 
-{/* Categories */}
-{Array.isArray(item.categories) && item.categories.length > 0 && (
-  <div className="flex flex-wrap gap-1.5 mb-4 mt-auto">
-    {item.categories.slice(0, 3).map((category, index) => (
-      <span
-        key={index}
-        className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-md"
-      >
-        {category
-          .split('-')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ')}
-      </span>
-    ))}
-    {item.categories.length > 3 && (
-      <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-md">
-        +{item.categories.length - 3}
-      </span>
-    )}
-  </div>
-)}
+          {/* Categories */}
+          {Array.isArray(item.categories) && item.categories.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-4 mt-auto">
+              {item.categories.slice(0, 3).map((category, index) => (
+                <span
+                  key={index}
+                  className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-md"
+                >
+                  {category
+                    .split('-')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ')}
+                </span>
+              ))}
+              {item.categories.length > 3 && (
+                <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-md">
+                  +{item.categories.length - 3}
+                </span>
+              )}
+            </div>
+          )}
 
 
         {/* Action Buttons */}
@@ -239,7 +239,7 @@ function MyFavorite() {
 
       try {
         setIsLoading(true);
-        const response = await axios.get(`${API_BASE_URL}/api/favourite/user-favorites`, {
+        const response = await axios.get(`${API_BASE_URL}/api/favorite/user-favorites`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
