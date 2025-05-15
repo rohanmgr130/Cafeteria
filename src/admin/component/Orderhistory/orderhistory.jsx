@@ -1,530 +1,5 @@
-// import React, { useState, useEffect } from 'react';
-// import { FiTrash2, FiEye, FiRefreshCw } from 'react-icons/fi';
-// import { format } from 'date-fns';
-
-// function Orderhistory() {
-//   const [orders, setOrders] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState(null);
-//   const [selectedOrder, setSelectedOrder] = useState(null);
-//   const [showModal, setShowModal] = useState(false);
-//   const [statusFilter, setStatusFilter] = useState('all');
-
-//   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
-//   const token = localStorage.getItem('token');
-
-//   // Fetch all orders
-//   useEffect(() => {
-//     fetchOrders();
-//   }, []);
-
-//   const fetchOrders = async () => {
-//     setLoading(true);
-//     try {
-//       const response = await fetch(`${API_BASE_URL}/api/order/get-all-orders`, {
-//         headers: {
-//           'Authorization': `Bearer ${token}`,
-//           'Content-Type': 'application/json'
-//         }
-//       });
-
-//       const data = await response.json();
-      
-//       if (data.success) {
-//         // Process orders and fetch user data for each
-//         const processedOrders = await Promise.all(
-//           data.orders.map(async (order) => {
-//             let userData = null;
-            
-//             // Fetch user data if userId exists
-//             if (order.cartData && order.cartData.userId) {
-//               userData = await fetchUserData(order.cartData.userId);
-//             }
-            
-//             return {
-//               ...order,
-//               userData
-//             };
-//           })
-//         );
-        
-//         setOrders(processedOrders);
-//       } else {
-//         setError('Failed to fetch orders');
-//       }
-//     } catch (err) {
-//       setError('Error connecting to server');
-//       console.error('Error fetching orders:', err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Fetch user data for an order
-//   const fetchUserData = async (userId) => {
-//     try {
-//       const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-//         headers: {
-//           'Authorization': `Bearer ${token}`,
-//           'Content-Type': 'application/json'
-//         }
-//       });
-      
-//       const data = await response.json();
-//       return data.success ? data.data : null;
-//     } catch (err) {
-//       console.error('Error fetching user data:', err);
-//       return null;
-//     }
-//   };
-
-//   // Handle order status update
-//   const handleStatusUpdate = async (orderId, newStatus) => {
-//     try {
-//       const response = await fetch(`${API_BASE_URL}/api/order/update-order/${orderId}`, {
-//         method: 'POST',
-//         headers: {
-//           'Authorization': `Bearer ${token}`,
-//           'Content-Type': 'application/json'
-//         },
-//         body: JSON.stringify({ orderStatus: newStatus })
-//       });
-      
-//       const data = await response.json();
-      
-//       if (data.success) {
-//         // Update order in the state
-//         setOrders(orders.map(order => 
-//           order._id === orderId ? { ...order, orderStatus: newStatus } : order
-//         ));
-        
-//         // Close modal if open
-//         if (showModal && selectedOrder && selectedOrder._id === orderId) {
-//           setSelectedOrder({ ...selectedOrder, orderStatus: newStatus });
-//         }
-//       } else {
-//         alert('Failed to update order status');
-//       }
-//     } catch (err) {
-//       console.error('Error updating order status:', err);
-//       alert('Error updating order status');
-//     }
-//   };
-
-//   // Handle order deletion
-//   const handleDeleteOrder = async (orderId) => {
-//     if (window.confirm('Are you sure you want to delete this order?')) {
-//       try {
-//         const response = await fetch(`${API_BASE_URL}/api/order/delete/${orderId}`, {
-//           method: 'DELETE',
-//           headers: {
-//             'Authorization': `Bearer ${token}`,
-//             'Content-Type': 'application/json'
-//           }
-//         });
-        
-//         const data = await response.json();
-        
-//         if (data.success) {
-//           // Remove order from state
-//           setOrders(orders.filter(order => order._id !== orderId));
-          
-//           // Close modal if the deleted order was being viewed
-//           if (showModal && selectedOrder && selectedOrder._id === orderId) {
-//             setShowModal(false);
-//           }
-//         } else {
-//           alert('Failed to delete order');
-//         }
-//       } catch (err) {
-//         console.error('Error deleting order:', err);
-//         alert('Error deleting order');
-//       }
-//     }
-//   };
-
-//   // View order details
-//   const viewOrderDetails = (order) => {
-//     setSelectedOrder(order);
-//     setShowModal(true);
-//   };
-
-//   // Get status badge class
-//   const getStatusBadgeClass = (status) => {
-//     switch (status) {
-//       case 'Pending':
-//         return 'bg-yellow-100 text-yellow-800';
-//       case 'Completed':
-//         return 'bg-green-100 text-green-800';
-//       case 'Cancelled':
-//         return 'bg-red-100 text-red-800';
-//       case 'Verified':
-//         return 'bg-blue-100 text-blue-800';
-//       case 'Preparing':
-//         return 'bg-purple-100 text-purple-800';
-//       default:
-//         return 'bg-gray-100 text-gray-800';
-//     }
-//   };
-
-//   // Get payment method badge class
-//   const getPaymentMethodBadgeClass = (method) => {
-//     return method === 'khalti' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800';
-//   };
-
-//   // Filter orders based on status
-//   const filteredOrders = statusFilter === 'all' 
-//     ? orders 
-//     : orders.filter(order => order.orderStatus === statusFilter);
-
-//   return (
-//     <div className="container mx-auto px-4 py-8">
-//       <div className="flex justify-between items-center mb-6">
-//         <h1 className="text-2xl font-bold text-gray-800">Order History</h1>
-//         <button 
-//           onClick={fetchOrders}
-//           className="flex items-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-//         >
-//           <FiRefreshCw className="mr-2" /> Refresh
-//         </button>
-//       </div>
-
-//       {/* Filters */}
-//       <div className="mb-6">
-//         <div className="flex space-x-2">
-//           <button 
-//             onClick={() => setStatusFilter('all')}
-//             className={`px-4 py-2 rounded ${statusFilter === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-//           >
-//             All
-//           </button>
-//           <button 
-//             onClick={() => setStatusFilter('Pending')}
-//             className={`px-4 py-2 rounded ${statusFilter === 'Pending' ? 'bg-yellow-500 text-white' : 'bg-gray-200'}`}
-//           >
-//             Pending
-//           </button>
-//           <button 
-//             onClick={() => setStatusFilter('Preparing')}
-//             className={`px-4 py-2 rounded ${statusFilter === 'Preparing' ? 'bg-purple-500 text-white' : 'bg-gray-200'}`}
-//           >
-//             Preparing
-//           </button>
-//           <button 
-//             onClick={() => setStatusFilter('Completed')}
-//             className={`px-4 py-2 rounded ${statusFilter === 'Completed' ? 'bg-green-500 text-white' : 'bg-gray-200'}`}
-//           >
-//             Completed
-//           </button>
-//           <button 
-//             onClick={() => setStatusFilter('Cancelled')}
-//             className={`px-4 py-2 rounded ${statusFilter === 'Cancelled' ? 'bg-red-500 text-white' : 'bg-gray-200'}`}
-//           >
-//             Cancelled
-//           </button>
-//         </div>
-//       </div>
-
-//       {/* Loading state */}
-//       {loading && (
-//         <div className="flex justify-center items-center h-64">
-//           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-//         </div>
-//       )}
-
-//       {/* Error state */}
-//       {error && (
-//         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-//           {error}
-//         </div>
-//       )}
-
-//       {/* Orders table */}
-//       {!loading && !error && (
-//         <>
-//           {filteredOrders.length === 0 ? (
-//             <div className="text-center py-10 bg-gray-50 rounded-lg">
-//               <p className="text-gray-500">No orders found</p>
-//             </div>
-//           ) : (
-//             <div className="overflow-x-auto bg-white rounded-lg shadow">
-//               <table className="min-w-full divide-y divide-gray-200">
-//                 <thead className="bg-gray-50">
-//                   <tr>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                       Order ID
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                       Customer
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                       Date & Time
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                       Total
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                       Status
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                       Payment
-//                     </th>
-//                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                       Actions
-//                     </th>
-//                   </tr>
-//                 </thead>
-//                 <tbody className="bg-white divide-y divide-gray-200">
-//                   {filteredOrders.map((order) => {
-//                     const userName = order.userData?.fullname || 'Unknown User';
-//                     const formattedDate = order.createdAt ? format(new Date(order.createdAt), 'MMM dd, yyyy') : 'N/A';
-//                     const formattedTime = order.createdAt ? format(new Date(order.createdAt), 'h:mm a') : 'N/A';
-//                     return (
-//                       <tr key={order._id} className="hover:bg-gray-50">
-//                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-//                           {order._id.substring(0, 8)}...
-//                         </td>
-//                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-//                           {userName}
-//                         </td>
-//                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-//                           <div>{formattedDate}</div>
-//                           <div className="text-xs text-gray-400">{formattedTime}</div>
-//                         </td>
-//                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-//                           Rs {order.cartData?.finalTotal || 0}
-//                         </td>
-//                         <td className="px-6 py-4 whitespace-nowrap">
-//                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(order.orderStatus)}`}>
-//                             {order.orderStatus}
-//                           </span>
-//                         </td>
-//                         <td className="px-6 py-4 whitespace-nowrap">
-//                           <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentMethodBadgeClass(order.orderMethod)}`}>
-//                             {order.orderMethod === 'khalti' ? 'Khalti' : 'Cash on Delivery'}
-//                           </span>
-//                         </td>
-//                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-//                           <div className="flex space-x-2">
-//                             <button
-//                               onClick={() => viewOrderDetails(order)}
-//                               className="text-blue-600 hover:text-blue-900"
-//                               title="View Details"
-//                             >
-//                               <FiEye size={18} />
-//                             </button>
-//                             <button
-//                               onClick={() => handleDeleteOrder(order._id)}
-//                               className="text-red-600 hover:text-red-900"
-//                               title="Delete Order"
-//                             >
-//                               <FiTrash2 size={18} />
-//                             </button>
-//                           </div>
-//                         </td>
-//                       </tr>
-//                     );
-//                   })}
-//                 </tbody>
-//               </table>
-//             </div>
-//           )}
-//         </>
-//       )}
-
-//       {/* Order Details Modal */}
-//       {showModal && selectedOrder && (
-//         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-//           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
-//             <div className="p-6">
-//               <div className="flex justify-between items-start">
-//                 <h2 className="text-xl font-bold text-gray-800">Order Details</h2>
-//                 <button 
-//                   onClick={() => setShowModal(false)}
-//                   className="text-gray-500 hover:text-gray-700"
-//                 >
-//                   ✕
-//                 </button>
-//               </div>
-              
-//               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-//                 <div>
-//                   <h3 className="text-sm font-medium text-gray-500">Order Information</h3>
-//                   <div className="mt-2 space-y-2">
-//                     <p><span className="font-medium">Order ID:</span> {selectedOrder._id}</p>
-//                     <p>
-//                       <span className="font-medium">Date:</span> {
-//                         selectedOrder.createdAt 
-//                           ? format(new Date(selectedOrder.createdAt), 'MMMM dd, yyyy h:mm a') 
-//                           : 'N/A'
-//                       }
-//                     </p>
-//                     <p>
-//                       <span className="font-medium">Status:</span> 
-//                       <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(selectedOrder.orderStatus)}`}>
-//                         {selectedOrder.orderStatus}
-//                       </span>
-//                     </p>
-//                     <p>
-//                       <span className="font-medium">Payment Method:</span> 
-//                       <span className={`ml-2 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPaymentMethodBadgeClass(selectedOrder.orderMethod)}`}>
-//                         {selectedOrder.orderMethod === 'khalti' ? 'Khalti' : 'Cash on Delivery'}
-//                       </span>
-//                     </p>
-//                     {selectedOrder.khaltiPayment && selectedOrder.orderMethod === 'khalti' && (
-//                       <div className="mt-2">
-//                         <p><span className="font-medium">Khalti Status:</span> {selectedOrder.khaltiPayment.status}</p>
-//                         {selectedOrder.khaltiPayment.pidx && (
-//                           <p><span className="font-medium">Transaction ID:</span> {selectedOrder.khaltiPayment.pidx}</p>
-//                         )}
-//                       </div>
-//                     )}
-//                   </div>
-//                 </div>
-                
-//                 <div>
-//                   <h3 className="text-sm font-medium text-gray-500">Customer Information</h3>
-//                   <div className="mt-2 space-y-2">
-//                     <p><span className="font-medium">Name:</span> {selectedOrder.userData?.fullname || 'Unknown'}</p>
-//                     <p><span className="font-medium">Phone:</span> {selectedOrder.additionalInfo?.phone || selectedOrder.userData?.phone || 'N/A'}</p>
-//                     <p><span className="font-medium">Address:</span> {selectedOrder.additionalInfo?.address || selectedOrder.userData?.address || 'N/A'}</p>
-//                     {selectedOrder.additionalInfo?.notes && (
-//                       <p><span className="font-medium">Notes:</span> {selectedOrder.additionalInfo.notes}</p>
-//                     )}
-//                   </div>
-//                 </div>
-//               </div>
-              
-//               <div className="mt-6">
-//                 <h3 className="text-sm font-medium text-gray-500">Order Items</h3>
-//                 <div className="mt-2 overflow-x-auto">
-//                   <table className="min-w-full divide-y divide-gray-200">
-//                     <thead className="bg-gray-50">
-//                       <tr>
-//                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                           Product
-//                         </th>
-//                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                           Quantity
-//                         </th>
-//                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                           Price
-//                         </th>
-//                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-//                           Total
-//                         </th>
-//                       </tr>
-//                     </thead>
-//                     <tbody className="bg-white divide-y divide-gray-200">
-//                       {selectedOrder.cartData?.items.map((item, index) => {
-//                         const productName = item.productId?.name || 'Unknown Product';
-//                         return (
-//                           <tr key={index}>
-//                             <td className="px-4 py-3 text-sm text-gray-900">
-//                               {productName}
-//                             </td>
-//                             <td className="px-4 py-3 text-sm text-gray-500 text-right">
-//                               {item.productQuantity || 1}
-//                             </td>
-//                             <td className="px-4 py-3 text-sm text-gray-500 text-right">
-//                               Rs {item.price || 0}
-//                             </td>
-//                             <td className="px-4 py-3 text-sm text-gray-500 text-right">
-//                               Rs {item.total || (item.price * (item.productQuantity || 1))}
-//                             </td>
-//                           </tr>
-//                         );
-//                       })}
-//                     </tbody>
-//                     <tfoot className="bg-gray-50">
-//                       <tr>
-//                         <td colSpan="3" className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-//                           Subtotal:
-//                         </td>
-//                         <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-//                           Rs {selectedOrder.cartData?.orderTotal || 0}
-//                         </td>
-//                       </tr>
-//                       {selectedOrder.cartData?.discount > 0 && (
-//                         <tr>
-//                           <td colSpan="3" className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-//                             Discount:
-//                           </td>
-//                           <td className="px-4 py-3 text-sm font-medium text-red-600 text-right">
-//                             - Rs {selectedOrder.cartData?.discount || 0}
-//                           </td>
-//                         </tr>
-//                       )}
-//                       <tr>
-//                         <td colSpan="3" className="px-4 py-3 text-base font-bold text-gray-900 text-right">
-//                           Total:
-//                         </td>
-//                         <td className="px-4 py-3 text-base font-bold text-gray-900 text-right">
-//                           Rs {selectedOrder.cartData?.finalTotal || 0}
-//                         </td>
-//                       </tr>
-//                     </tfoot>
-//                   </table>
-//                 </div>
-//               </div>
-              
-//               <div className="mt-6 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-//                 <div className="w-full md:w-auto">
-//                   <h3 className="text-sm font-medium text-gray-500 mb-2">Update Status</h3>
-//                   <div className="flex flex-wrap gap-2">
-//                     <button 
-//                       onClick={() => handleStatusUpdate(selectedOrder._id, 'Pending')}
-//                       className={`px-3 py-1 text-xs rounded ${selectedOrder.orderStatus === 'Pending' ? 'bg-yellow-500 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'}`}
-//                     >
-//                       Pending
-//                     </button>
-//                     <button 
-//                       onClick={() => handleStatusUpdate(selectedOrder._id, 'Preparing')}
-//                       className={`px-3 py-1 text-xs rounded ${selectedOrder.orderStatus === 'Preparing' ? 'bg-purple-500 text-white' : 'bg-purple-100 text-purple-800 hover:bg-purple-200'}`}
-//                     >
-//                       Preparing
-//                     </button>
-//                     <button 
-//                       onClick={() => handleStatusUpdate(selectedOrder._id, 'Verified')}
-//                       className={`px-3 py-1 text-xs rounded ${selectedOrder.orderStatus === 'Verified' ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-800 hover:bg-blue-200'}`}
-//                     >
-//                       Verified
-//                     </button>
-//                     <button 
-//                       onClick={() => handleStatusUpdate(selectedOrder._id, 'Completed')}
-//                       className={`px-3 py-1 text-xs rounded ${selectedOrder.orderStatus === 'Completed' ? 'bg-green-500 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
-//                     >
-//                       Completed
-//                     </button>
-//                     <button 
-//                       onClick={() => handleStatusUpdate(selectedOrder._id, 'Cancelled')}
-//                       className={`px-3 py-1 text-xs rounded ${selectedOrder.orderStatus === 'Cancelled' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-800 hover:bg-red-200'}`}
-//                     >
-//                       Cancelled
-//                     </button>
-//                   </div>
-//                 </div>
-                
-//                 <button
-//                   onClick={() => handleDeleteOrder(selectedOrder._id)}
-//                   className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center"
-//                 >
-//                   <FiTrash2 className="mr-2" /> Delete Order
-//                 </button>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }
-
-// export default Orderhistory;
-
-
 import React, { useState, useEffect } from 'react';
-import { FiTrash2, FiEye, FiRefreshCw, FiFilter, FiSearch, FiAlertCircle } from 'react-icons/fi';
+import { FiTrash2, FiEye, FiRefreshCw, FiFilter, FiSearch, FiAlertCircle, FiLock } from 'react-icons/fi';
 import { format } from 'date-fns';
 
 function Orderhistory() {
@@ -605,8 +80,22 @@ function Orderhistory() {
     }
   };
 
+  // Check if status can be updated
+  const canUpdateStatus = (currentStatus) => {
+    return currentStatus.toLowerCase() !== 'cancelled' && currentStatus.toLowerCase() !== 'completed';
+  };
+
   // Handle order status update
   const handleStatusUpdate = async (orderId, newStatus) => {
+    // Find the order
+    const order = orders.find(order => order._id === orderId);
+    
+    // Check if status update is allowed
+    if (!order || !canUpdateStatus(order.orderStatus)) {
+      showNotification('This order cannot be updated', 'error');
+      return;
+    }
+    
     setIsUpdating(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/order/update-order/${orderId}`, {
@@ -630,6 +119,8 @@ function Orderhistory() {
         if (showModal && selectedOrder && selectedOrder._id === orderId) {
           setSelectedOrder({ ...selectedOrder, orderStatus: newStatus });
         }
+        
+        showNotification(`Order status updated to ${newStatus}`, 'success');
       } else {
         showNotification('Failed to update order status', 'error');
       }
@@ -715,6 +206,12 @@ function Orderhistory() {
   // Get status badge class for buttons
   const getStatusButtonClass = (status, currentStatus) => {
     const isActive = status === currentStatus;
+    const isDisabled = !canUpdateStatus(currentStatus);
+    
+    if (isDisabled) {
+      // Return disabled style for all buttons when status can't be updated
+      return 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed opacity-70';
+    }
     
     switch (status) {
       case 'Pending':
@@ -1220,39 +717,45 @@ function Orderhistory() {
                   <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                     <div className="w-full md:w-auto">
                       <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Update Status</h3>
+                      {!canUpdateStatus(selectedOrder.orderStatus) && (
+                        <div className="flex items-center mb-3 p-2 bg-amber-50 text-amber-700 rounded-md border border-amber-200">
+                          <FiLock className="mr-2" /> 
+                          <span>Status cannot be changed for {selectedOrder.orderStatus.toLowerCase()} orders</span>
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-2">
                         <button 
                           onClick={() => handleStatusUpdate(selectedOrder._id, 'Pending')}
                           className={`px-3 py-2 text-sm rounded-md font-medium transition-all ${getStatusButtonClass('Pending', selectedOrder.orderStatus)}`}
-                          disabled={isUpdating}
+                          disabled={isUpdating || !canUpdateStatus(selectedOrder.orderStatus)}
                         >
                           Pending
                         </button>
                         <button 
                           onClick={() => handleStatusUpdate(selectedOrder._id, 'Preparing')}
                           className={`px-3 py-2 text-sm rounded-md font-medium transition-all ${getStatusButtonClass('Preparing', selectedOrder.orderStatus)}`}
-                          disabled={isUpdating}
+                          disabled={isUpdating || !canUpdateStatus(selectedOrder.orderStatus)}
                         >
                           Preparing
                         </button>
                         <button 
                           onClick={() => handleStatusUpdate(selectedOrder._id, 'Verified')}
                           className={`px-3 py-2 text-sm rounded-md font-medium transition-all ${getStatusButtonClass('Verified', selectedOrder.orderStatus)}`}
-                          disabled={isUpdating}
+                          disabled={isUpdating || !canUpdateStatus(selectedOrder.orderStatus)}
                         >
                           Verified
                         </button>
                         <button 
                           onClick={() => handleStatusUpdate(selectedOrder._id, 'Completed')}
                           className={`px-3 py-2 text-sm rounded-md font-medium transition-all ${getStatusButtonClass('Completed', selectedOrder.orderStatus)}`}
-                          disabled={isUpdating}
+                          disabled={isUpdating || !canUpdateStatus(selectedOrder.orderStatus)}
                         >
                           Completed
                         </button>
                         <button 
                           onClick={() => handleStatusUpdate(selectedOrder._id, 'Cancelled')}
                           className={`px-3 py-2 text-sm rounded-md font-medium transition-all ${getStatusButtonClass('Cancelled', selectedOrder.orderStatus)}`}
-                          disabled={isUpdating}
+                          disabled={isUpdating || !canUpdateStatus(selectedOrder.orderStatus)}
                         >
                           Cancelled
                         </button>

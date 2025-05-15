@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { FaSearch, FaEdit, FaCheck, FaTimes, FaPrint, FaExclamationTriangle, FaTrash, FaFilter, FaSort, FaSortUp, FaSortDown } from 'react-icons/fa';
+import { FaSearch, FaEdit, FaCheck, FaTimes, FaPrint, FaExclamationTriangle, FaTrash, FaFilter, FaSort, FaSortUp, FaSortDown, FaLock } from 'react-icons/fa';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Skeleton from 'react-loading-skeleton';
@@ -116,6 +115,11 @@ const ViewOrder = () => {
   // Status options - updated to match backend enum values
   const statusOptions = ["Pending", "Completed", "Cancelled", "Verified", "Preparing"];
   const paymentMethodOptions = ["All", "khalti", "cash-on"];
+
+  // Helper function to check if status updates should be disabled
+  const isStatusUpdateDisabled = (currentStatus) => {
+    return currentStatus === "Cancelled" || currentStatus === "Completed";
+  };
 
   // Fetch orders when component mounts or filters change
   useEffect(() => {
@@ -233,7 +237,7 @@ const ViewOrder = () => {
           
           try {
             const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/users/${id}`, {
-              method: "GET",
+              // method: "GET",
               headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${localStorage.getItem('token')}`
@@ -364,6 +368,13 @@ const ViewOrder = () => {
   // Update order status
   const updateStatus = async (id, newStatus, customerId) => {
     try {
+      // Check if the order's current status is "Cancelled" or "Completed"
+      const orderToUpdate = orders.find(order => order.id === id);
+      if (isStatusUpdateDisabled(orderToUpdate.status)) {
+        toast.warning(`Cannot update status. Order is already ${orderToUpdate.status}.`);
+        return;
+      }
+      
       console.log('newStatus', newStatus);
       setLoading(true);
       
@@ -443,6 +454,14 @@ const ViewOrder = () => {
 
   const saveEditing = async () => {
     try {
+      // Check if the original order's status was "Cancelled" or "Completed"
+      const originalOrder = orders.find(order => order.id === editingOrder.id);
+      
+      if (isStatusUpdateDisabled(originalOrder.status) && editingOrder.status !== originalOrder.status) {
+        toast.warning(`Cannot update status. Order is already ${originalOrder.status}.`);
+        return;
+      }
+      
       setLoading(true);
       
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/update-order/${editingOrder.id}`, {
@@ -752,8 +771,9 @@ const ViewOrder = () => {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
+                <option value="All">All Statuses</option>
                 {statusOptions.map(option => (
-                  <option key={option} value={option}>{option === "All" ? "All Statuses" : option}</option>
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </div>
@@ -923,6 +943,9 @@ const ViewOrder = () => {
                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full text-white ${getStatusColor(order.status)}`}>
                               {order.status}
                             </span>
+                            {isStatusUpdateDisabled(order.status) && (
+                              <FaLock className="inline-block ml-1 text-gray-400" title="Status locked" />
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex space-x-2">
@@ -998,21 +1021,28 @@ const ViewOrder = () => {
                                 {/* Order Actions */}
                                 <div>
                                   <h3 className="font-semibold text-gray-800 mb-2">Update Status</h3>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    {statusOptions.filter(s => s !== "All").map(status => (
-                                      <button
-                                        key={status}
-                                        onClick={() => updateStatus(order.id, status, order.customerId)}
-                                        className={`px-2 py-1 text-xs rounded ${
-                                          order.status === status 
-                                            ? `${getStatusColor(status)} text-white` 
-                                            : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
-                                        }`}
-                                      >
-                                        {status}
-                                      </button>
-                                    ))}
-                                  </div>
+                                  {isStatusUpdateDisabled(order.status) ? (
+                                    <div className="bg-gray-100 p-2 rounded border border-gray-300 text-sm flex mb-3">
+                                      <FaLock className="text-gray-500 mr-2 flex-shrink-0 mt-1" />
+                                      <p>Status updates are disabled for {order.status} orders.</p>
+                                    </div>
+                                  ) : (
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {statusOptions.filter(s => s !== "All").map(status => (
+                                        <button
+                                          key={status}
+                                          onClick={() => updateStatus(order.id, status, order.customerId)}
+                                          className={`px-2 py-1 text-xs rounded ${
+                                            order.status === status 
+                                              ? `${getStatusColor(status)} text-white` 
+                                              : 'bg-gray-200 hover:bg-gray-300 text-gray-800'
+                                          }`}
+                                        >
+                                          {status}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
                                   
                                   <div className="mt-4">
                                     <h3 className="font-semibold text-gray-800 mb-2">Payment Information</h3>
@@ -1238,15 +1268,26 @@ const ViewOrder = () => {
                 {/* Order Status */}
                 <div>
                   <label className="block text-gray-700 font-medium mb-2">Order Status</label>
-                  <select
-                    className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={editingOrder.status}
-                    onChange={(e) => setEditingOrder({...editingOrder, status: e.target.value})}
-                  >
-                    {statusOptions.filter(s => s !== "All").map(status => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      className={`w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                        isStatusUpdateDisabled(orders.find(o => o.id === editingOrder.id)?.status) ? 'bg-gray-100 cursor-not-allowed' : ''
+                      }`}
+                      value={editingOrder.status}
+                      onChange={(e) => setEditingOrder({...editingOrder, status: e.target.value})}
+                      disabled={isStatusUpdateDisabled(orders.find(o => o.id === editingOrder.id)?.status)}
+                    >
+                      {statusOptions.filter(s => s !== "All").map(status => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                    {isStatusUpdateDisabled(orders.find(o => o.id === editingOrder.id)?.status) && (
+                      <div className="mt-1 text-sm text-gray-500 flex items-center">
+                        <FaLock className="mr-1" />
+                        <span>Status cannot be changed for {orders.find(o => o.id === editingOrder.id)?.status} orders</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Payment Status */}

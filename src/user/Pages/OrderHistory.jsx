@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaEye, FaTrashAlt } from "react-icons/fa";
+import { FaEye, FaTrashAlt, FaBan } from "react-icons/fa";
 import Footer from "../components/FooterPart";
 import Navbar from "../components/Navbar";
 
@@ -214,6 +214,53 @@ const OrderHistory = () => {
     }
   };
 
+  // Handle cancelling an order
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm("Are you sure you want to cancel this order?")) {
+      return;
+    }
+    
+    const token = localStorage.getItem("token");
+    
+    if (!token) {
+      alert("Authentication token not found. Please log in again.");
+      return;
+    }
+    
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/update-order/${orderId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ orderStatus: "Cancelled" })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to cancel order");
+      }
+      
+      console.log("Order cancelled:", data);
+      
+      // Update order status in local state
+      setOrderDetails(prevDetails => ({
+        ...prevDetails,
+        [orderId]: {
+          ...prevDetails[orderId],
+          orderStatus: "cancelled"
+        }
+      }));
+      
+      alert("Order has been cancelled successfully.");
+    } catch (err) {
+      console.error("Error cancelling order:", err);
+      alert(`Error cancelling order: ${err.message}`);
+    }
+  };
+
   // Function to format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -342,6 +389,7 @@ const OrderHistory = () => {
                             order.orderStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                             order.orderStatus === 'verified' ? 'bg-blue-100 text-blue-800' :
                             order.orderStatus === 'failed' ? 'bg-red-100 text-red-800' :
+                            order.orderStatus === 'cancelled' ? 'bg-gray-100 text-gray-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
                             {order.orderStatus || "Processing"}
@@ -359,6 +407,15 @@ const OrderHistory = () => {
                             >
                               <FaEye size={18} />
                             </button>
+                            {(order.orderStatus)?.toLowerCase() === 'pending' && (
+                              <button
+                                onClick={() => handleCancelOrder(orderId)}
+                                className="text-orange-500 hover:text-orange-700"
+                                title="Cancel Order"
+                              >
+                                <FaBan size={18} />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDeleteOrder(orderId)}
                               className="text-red-500 hover:text-red-700"
@@ -455,13 +512,13 @@ const OrderHistory = () => {
                               
                               // Check various possibilities for where the name might be
                               if (item.productId) {
-                                if (typeof item.productId === 'object' && item.productId !== null) {
+                                // if (typeof item.productId === 'object' && item.productId !== null) {
                                   // If productId is populated as an object
-                                  itemName = item.productId.name || item.productId.title || `Product #${index + 1}`;
-                                } else {
-                                  // If productId is just an ID
-                                  itemName = `Product #${index + 1}`;
-                                }
+                                  itemName = item.name || item.productId.title || `Product #${index + 1}`;
+                                // } else {
+                                //   // If productId is just an ID
+                                //   itemName = `Product #${index + 1}`;
+                                // }
                               } else if (item.name) {
                                 // If name is directly on the item
                                 itemName = item.name;
@@ -542,7 +599,21 @@ const OrderHistory = () => {
               )}
             </div>
             
-            <div className="bg-gray-50 px-6 py-4 border-t flex justify-end">
+            {/* Modal footer */}
+            <div className="bg-gray-50 px-6 py-4 border-t flex justify-between">
+              <div>
+                {orderDetails[selectedOrder] && orderDetails[selectedOrder].orderStatus === 'pending' && (
+                  <button
+                    onClick={() => {
+                      handleCancelOrder(selectedOrder);
+                      closeModal();
+                    }}
+                    className="bg-orange-500 hover:bg-orange-600 text-white font-medium px-5 py-2 rounded-md"
+                  >
+                    Cancel Order
+                  </button>
+                )}
+              </div>
               <button
                 onClick={closeModal}
                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium px-5 py-2 rounded-md"
