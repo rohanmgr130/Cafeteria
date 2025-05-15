@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,  useCallback} from 'react';
+
 import { IoSearch } from "react-icons/io5";
 import { RxCross1 } from "react-icons/rx";
 import { useNavigate } from 'react-router-dom';
@@ -69,18 +70,22 @@ function Search() {
       setFilteredItems(menuItems);
       return;
     }
+
+    console.log('menu', menuItems);
+    console.log('query', query);
     
     const lowercaseQuery = query.toLowerCase();
     const result = menuItems.filter(item =>
       (item.title || '').toLowerCase().includes(lowercaseQuery) ||
       (item.description || '').toLowerCase().includes(lowercaseQuery) ||
-      (item.categories || []).some(cat => cat.toLowerCase().includes(lowercaseQuery))
+      (item.categories || '').toLowerCase().includes(lowercaseQuery)
     );
     
     setFilteredItems(result);
   };
 
   const handlePopularSearch = (term) => {
+    console.log('popular', term);
     setSearchTerm(term);
     setShowSuggestions(false);
     filterMenuItems(term);
@@ -92,20 +97,41 @@ function Search() {
     setFilteredItems(menuItems);
   };
 
-  const handleItemClick = (item) => {
-    navigate(`/menu/${item._id}`, { state: { itemDetails: item } });
-    setShowSuggestions(false);
-  };
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    navigate('/menu', { 
+
+  const handleItemClick = (item) => {
+    navigate(`/user-menus`, { 
       state: { 
         searchTerm
       } 
     });
     setShowSuggestions(false);
   };
+
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    navigate('/user-menus', { 
+      state: { 
+        searchTerm
+      } 
+    });
+    setShowSuggestions(false);
+  };
+
+  const getImageUrl = useCallback((imagePath) => {
+      if (!imagePath) return "/api/placeholder/400/300";
+      
+      // Check if the path already includes '/uploads/'
+      if (imagePath.startsWith('/uploads/')) {
+        return `${process.env.REACT_APP_API_BASE_URL}${imagePath}`;
+      } else if (imagePath.includes('/uploads/')) {
+        // This handles cases where the full path might be stored
+        return `${process.env.REACT_APP_API_BASE_URL}${imagePath.substring(imagePath.indexOf('/uploads/'))}`;
+      } else {
+        // Just append the path to the uploads directory
+        return `${process.env.REACT_APP_API_BASE_URL}/uploads/${imagePath}`;
+      }
+    }, []);
 
   return (
     <div className="relative w-full h-[540px] overflow-hidden">
@@ -195,7 +221,7 @@ function Search() {
                       {item.image && (
                         <div className="h-14 w-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                           <img 
-                            src={item.image} 
+                            src={getImageUrl(item.image)} 
                             alt={item.title} 
                             className="h-full w-full object-cover"
                             onError={(e) => {
