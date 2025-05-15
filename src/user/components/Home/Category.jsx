@@ -362,9 +362,17 @@ const Category = () => {
   }, []);
   
   // Handle category click
+  // const handleCategoryClick = (categoryName) => {
+  //   // Navigate to menu page with category filter
+  //   navigate(`/menu?category=${encodeURIComponent(categoryName)}`);
+  // };
+
   const handleCategoryClick = (categoryName) => {
-    // Navigate to menu page with category filter
-    navigate(`/menu?category=${encodeURIComponent(categoryName)}`);
+    navigate(`/user-menus`, { 
+      state: { 
+        activeCategory: categoryName 
+      } 
+    });
   };
 
   // Handle "See All" click
