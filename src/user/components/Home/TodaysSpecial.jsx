@@ -47,7 +47,7 @@ function TodaysSpecial() {
   }, []); // Empty dependency array to prevent infinite loop
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-6">
+    <div className=" bg-gray-50 py-6 px-6">
       {/* Header Section */}
       <div className="max-w-7xl mx-auto mb-4 text-center">
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
