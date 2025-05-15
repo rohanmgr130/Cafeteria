@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaHeart, FaShoppingCart, FaFilter } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Footer from "../components/FooterPart";
 import Navbar from "../components/Navbar";
@@ -184,6 +184,32 @@ const OurMenu = () => {
       setIsLoading(false);
     }
   };
+
+  const location = useLocation();
+
+  // Add this useEffect hook
+  useEffect(() => {
+    // Check if there's a searchTerm in the location state
+    if (location.state && location.state.searchTerm) {
+      // Set the search query to the provided search term
+      setSearchQuery(location.state.searchTerm);
+    }
+  }, [location.state]); // Only re-run when location.state changes
+
+  useEffect(() => {
+    // Check if there's data in the location state
+    if (location.state) {
+      // Set search query if provided
+      if (location.state.searchTerm) {
+        setSearchQuery(location.state.searchTerm);
+      }
+      
+      // Set active category if provided
+      if (location.state.activeCategory) {
+        setActiveCategory(location.state.activeCategory);
+      }
+    }
+  }, [location.state]);
 
   // Fetch menu items on component mount
   useEffect(() => {

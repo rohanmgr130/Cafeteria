@@ -212,14 +212,49 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
   const [isFavorite, setIsFavorite] = useState(isFavorited);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [isLoadingFavoriteStatus, setIsLoadingFavoriteStatus] = useState(true);
   
   const userId = localStorage.getItem("id");
   const token = localStorage.getItem("token");
   
-  // Update isFavorite when isFavorited prop changes
+  // Check favorite status on component mount
   useEffect(() => {
-    setIsFavorite(isFavorited);
-  }, [isFavorited]);
+    const checkFavoriteStatus = async () => {
+      if (!userId || !token) {
+        setIsLoadingFavoriteStatus(false);
+        return;
+      }
+      
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/favorite/user-favorites`, {
+          // method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ itemId: item._id }),
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log(data)
+          setIsFavorite(data.isFavorite);
+        }
+      } catch (error) {
+        console.error("Error checking favorite status:", error);
+      } finally {
+        setIsLoadingFavoriteStatus(false);
+      }
+    };
+    
+    // Only check if not already provided through props
+    if (isFavorited === undefined || isFavorited === null) {
+      checkFavoriteStatus();
+    } else {
+      setIsLoadingFavoriteStatus(false);
+    }
+  }, [item._id, token, userId, isFavorited]);
 
   // Function to parse and clean categories
   const parseCategories = useCallback((categories) => {
@@ -547,28 +582,32 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
 
         {/* Action Buttons */}
         <div className="flex items-center justify-between mt-4">
-          <button
-            onClick={() => handleToggleFavorite(item._id)}
-            disabled={isTogglingFavorite}
-            className={`flex-1 mr-2 py-2 px-4 rounded-lg ${
-              isFavorite ? 'bg-red-900/60 hover:bg-red-900/80' : 'bg-gray-700 hover:bg-gray-600'
-            } text-white transition-colors flex items-center justify-center space-x-2 ${
-              isTogglingFavorite ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
-          >
-            {isTogglingFavorite ? (
-              <span className="h-4 w-4 border-2 border-t-white rounded-full animate-spin mr-2"></span>
-            ) : (
-              <FaHeart className={`${isFavorite ? "text-red-500" : "text-white"} mr-2`} />
-            )}
-            <span className="text-sm font-medium">
-              {isTogglingFavorite ? 'Updating...' : (isFavorite ? 'Favorited' : 'Favorite')}
-            </span>
-          </button>
+          {!isLoadingFavoriteStatus && (
+            <button
+              onClick={() => handleToggleFavorite(item._id)}
+              disabled={isTogglingFavorite}
+              className={`flex-1 mr-2 py-2 px-4 rounded-lg ${
+                isFavorite 
+                  ? 'bg-red-700 hover:bg-red-800' 
+                  : 'bg-gray-700 hover:bg-gray-600'
+              } text-white transition-colors flex items-center justify-center space-x-2 ${
+                isTogglingFavorite ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+            >
+              {isTogglingFavorite ? (
+                <span className="h-4 w-4 border-2 border-t-white rounded-full animate-spin mr-2"></span>
+              ) : (
+                <FaHeart className={`${isFavorite ? "text-red-300" : "text-white"} mr-2`} />
+              )}
+              <span className="text-sm font-medium">
+                {isTogglingFavorite ? 'Updating...' : (isFavorite ? 'Remove Favorite' : 'Favorite')}
+              </span>
+            </button>
+          )}
           <button
             onClick={() => handleAddToCart(item._id)}
             disabled={isAddingToCart}
-            className={`flex-1 py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center justify-center space-x-2 ${
+            className={`${!isLoadingFavoriteStatus ? 'flex-1' : 'w-full'} py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center justify-center space-x-2 ${
               isAddingToCart ? 'opacity-70 cursor-not-allowed' : ''
             }`}
           >
