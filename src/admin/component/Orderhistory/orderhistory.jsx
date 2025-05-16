@@ -118,6 +118,8 @@ function Orderhistory() {
         // Close modal if open
         if (showModal && selectedOrder && selectedOrder._id === orderId) {
           setSelectedOrder({ ...selectedOrder, orderStatus: newStatus });
+                  setShowModal(false);
+
         }
         
         showNotification(`Order status updated to ${newStatus}`, 'success');
@@ -250,6 +252,8 @@ function Orderhistory() {
 
   // Format item names for display in the table
   const formatItemsList = (items) => {
+
+    console.log('items', items);
     if (!items || items.length === 0) return 'No items';
     
     // Get product names from the first 2 items using multiple possible data structures
@@ -261,6 +265,7 @@ function Orderhistory() {
                     item.product?.name || 
                     item.name || 
                     item.productName || 
+                    item.productId.title ||
                     (typeof item.productId === 'string' ? item.productId : null);
                     
         // For debugging, log the item structure to console
@@ -660,6 +665,7 @@ function Orderhistory() {
                                               item.product?.name || 
                                               item.name || 
                                               item.productName || 
+                                              item.productId.title || 
                                               (typeof item.productId === 'string' ? item.productId : 'Unknown Product');
                                               
                             return (
