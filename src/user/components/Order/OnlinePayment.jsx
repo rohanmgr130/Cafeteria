@@ -236,6 +236,11 @@ const OnlinePayment = ({ cartTotal, onCheckout, loading, checkoutLoading, cartDe
         throw new Error('Invalid response from payment server');
       }
 
+      console.log('response::::::::::::', response);
+            console.log('data::::::::::::', data);
+                        console.log('data.khaltiPaymentUrl::::::::::::', data.khaltiPaymentUrl);
+
+
       if (response.ok && data.khaltiPaymentUrl) {
         // Store order ID for verification later
         localStorage.setItem('currentOrderId', data.orderId);
