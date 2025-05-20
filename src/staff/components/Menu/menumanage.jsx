@@ -1,3 +1,4 @@
+
 // import React, { useState, useEffect, useCallback } from 'react'
 // import { Link } from 'react-router-dom'
 // import axios from 'axios'
@@ -14,7 +15,8 @@
 //   const [fetchLoading, setFetchLoading] = useState(false)
 //   const [error, setError] = useState(null)
 
-//   const API_BASE_URL = 'http://localhost:4000'
+//   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL
+//   console.log(API_BASE_URL)
 //   const itemsPerPage = 5
 
 //   // Fetch categories with error handling and retry
@@ -258,7 +260,7 @@
 //                         <td className="px-4 py-3 whitespace-nowrap">
 //                           <div className="h-12 w-12 rounded-lg bg-gray-100 overflow-hidden">
 //                             {item.image ? (
-//                               <img src={`http://localhost:4000${item.image}`} alt={item.title} className="h-full w-full object-cover" />
+//                               <img src={`${API_BASE_URL}${item.image}`} alt={item.title} className="h-full w-full object-cover" />
 //                             ) : (
 //                               <div className="h-full w-full flex items-center justify-center text-gray-500 text-xs">No IMG</div>
 //                             )}
@@ -274,7 +276,7 @@
 //                           <div className="text-sm text-gray-900">Rs {formatPrice(item.price)}</div>
 //                         </td>
 //                         <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-//                           <Link to={'/staff-menu/edit-menu/:id'}>
+//                           <Link to={`/staff-menu/edit-menu/${item._id}`}>
 //                             <button className="text-blue-600 hover:text-blue-800 mr-3 transition-colors duration-200">Edit</button>
 //                           </Link>
 //                           <button
@@ -354,11 +356,11 @@
 
 
 
-
 import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
 import { toast } from 'react-toastify' // Assuming you're using react-toastify for notifications
+import { FaToggleOn, FaToggleOff } from 'react-icons/fa'
 
 function MenuManage() {
   const [menuItems, setMenuItems] = useState([])
@@ -366,10 +368,12 @@ function MenuManage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [availabilityFilter, setAvailabilityFilter] = useState('all')
   const [sortOption, setSortOption] = useState('name-asc')
   const [isLoading, setIsLoading] = useState(true)
   const [fetchLoading, setFetchLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [toggleLoading, setToggleLoading] = useState({})
 
   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL
   console.log(API_BASE_URL)
@@ -423,6 +427,10 @@ function MenuManage() {
         else if (!item.category) {
           return { ...item, category: "Uncategorized" };
         }
+        // Ensure isAvailable exists, default to true if not set
+        if (item.isAvailable === undefined) {
+          return { ...item, isAvailable: true };
+        }
         return item;
       });
       
@@ -442,6 +450,45 @@ function MenuManage() {
     fetchCategories()
   }, [fetchMenuItems, fetchCategories])
 
+  // Handle toggle availability
+  const handleToggleAvailability = async (id, currentStatus) => {
+    // Prevent multiple clicks
+    if (toggleLoading[id]) return;
+    
+    // Set loading state for this specific item
+    setToggleLoading(prev => ({ ...prev, [id]: true }));
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/staff/toggle-availability/${id}`, {
+        method: 'PATCH',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update availability');
+      }
+      
+      const data = await response.json();
+      
+      // Update menu items locally without refetching
+      setMenuItems(prevItems => 
+        prevItems.map(item => 
+          item._id === id 
+            ? { ...item, isAvailable: data.isAvailable } 
+            : item
+        )
+      );
+      
+      toast.success(data.message || `Item is now ${data.isAvailable ? 'available' : 'unavailable'}`);
+    } catch (error) {
+      console.error('Error toggling availability:', error);
+      toast.error(`Failed to update availability: ${error.message}`);
+    } finally {
+      // Clear loading state for this item
+      setToggleLoading(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this item?')) {
       try {
@@ -460,6 +507,7 @@ function MenuManage() {
 
   const handleSort = (e) => setSortOption(e.target.value)
   const handleCategoryFilter = (e) => setCategoryFilter(e.target.value)
+  const handleAvailabilityFilter = (e) => setAvailabilityFilter(e.target.value)
 
   const getSortedAndFilteredItems = () => {
     let filtered = [...menuItems]
@@ -476,6 +524,12 @@ function MenuManage() {
       filtered = filtered.filter(item => 
         item.category === categoryFilter
       )
+    }
+    
+    // Apply availability filter
+    if (availabilityFilter !== 'all') {
+      const isAvailable = availabilityFilter === 'available';
+      filtered = filtered.filter(item => item.isAvailable === isAvailable);
     }
 
     // Apply sorting
@@ -494,6 +548,14 @@ function MenuManage() {
         break
       case 'category':
         filtered.sort((a, b) => (a.category || '').localeCompare(b.category || ''))
+        break
+      case 'available':
+        filtered.sort((a, b) => {
+          // Sort by availability (available first)
+          if (a.isAvailable && !b.isAvailable) return -1;
+          if (!a.isAvailable && b.isAvailable) return 1;
+          return 0;
+        })
         break
       default:
         break
@@ -517,7 +579,7 @@ function MenuManage() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, categoryFilter, sortOption])
+  }, [searchTerm, categoryFilter, availabilityFilter, sortOption])
 
   // Function to safely render category
   const renderCategory = (item) => {
@@ -543,7 +605,7 @@ function MenuManage() {
 
         <div className="bg-white p-3 rounded-lg shadow-md mb-4 sticky top-20 z-10">
           <div className="flex flex-col md:flex-row gap-3">
-            <div className="md:w-1/4">
+            <div className="md:w-1/5">
               <label className="block text-xs font-medium text-gray-700 mb-1">Sort by</label>
               <select
                 value={sortOption}
@@ -555,10 +617,11 @@ function MenuManage() {
                 <option value="price-asc">Price (Low to High)</option>
                 <option value="price-desc">Price (High to Low)</option>
                 <option value="category">Category</option>
+                <option value="available">Availability</option>
               </select>
             </div>
             
-            <div className="md:w-1/4">
+            <div className="md:w-1/5">
               <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
               <select
                 value={categoryFilter}
@@ -575,7 +638,20 @@ function MenuManage() {
               </select>
             </div>
             
-            <div className="md:w-2/4">
+            <div className="md:w-1/5">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Availability</label>
+              <select
+                value={availabilityFilter}
+                onChange={handleAvailabilityFilter}
+                className="w-full border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none"
+              >
+                <option value="all">All Items</option>
+                <option value="available">Available Only</option>
+                <option value="unavailable">Unavailable Only</option>
+              </select>
+            </div>
+            
+            <div className="md:w-2/5">
               <label className="block text-xs font-medium text-gray-700 mb-1">Search</label>
               <input
                 type="text"
@@ -607,6 +683,7 @@ function MenuManage() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Availability</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -616,7 +693,11 @@ function MenuManage() {
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="h-12 w-12 rounded-lg bg-gray-100 overflow-hidden">
                             {item.image ? (
-                              <img src={`${API_BASE_URL}${item.image}`} alt={item.title} className="h-full w-full object-cover" />
+                              <img 
+                                src={`${API_BASE_URL}${item.image}`} 
+                                alt={item.title} 
+                                className={`h-full w-full object-cover ${!item.isAvailable ? 'filter grayscale' : ''}`}
+                              />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center text-gray-500 text-xs">No IMG</div>
                             )}
@@ -631,16 +712,50 @@ function MenuManage() {
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="text-sm text-gray-900">Rs {formatPrice(item.price)}</div>
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                          <Link to={`/staff-menu/edit-menu/${item._id}`}>
-                            <button className="text-blue-600 hover:text-blue-800 mr-3 transition-colors duration-200">Edit</button>
-                          </Link>
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <button
-                            onClick={() => handleDelete(item._id)}
-                            className="text-red-600 hover:text-red-800 transition-colors duration-200"
+                            onClick={() => handleToggleAvailability(item._id, item.isAvailable)}
+                            disabled={toggleLoading[item._id]}
+                            className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
+                              item.isAvailable 
+                                ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                : 'bg-red-100 text-red-700 hover:bg-red-200'
+                            } transition-colors`}
                           >
-                            Delete
+                            {toggleLoading[item._id] ? (
+                              <svg className="animate-spin h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                            ) : (
+                              <>
+                                {item.isAvailable ? (
+                                  <>
+                                    <span className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></span>
+                                    <span>Available</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="h-2 w-2 bg-red-500 rounded-full"></span>
+                                    <span>Unavailable</span>
+                                  </>
+                                )}
+                              </>
+                            )}
                           </button>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+                          <div className="flex space-x-2">
+                            <Link to={`/staff-menu/edit-menu/${item._id}`}>
+                              <button className="text-blue-600 hover:text-blue-800 transition-colors duration-200">Edit</button>
+                            </Link>
+                            <button
+                              onClick={() => handleDelete(item._id)}
+                              className="text-red-600 hover:text-red-800 transition-colors duration-200"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
