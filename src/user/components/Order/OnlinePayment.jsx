@@ -428,11 +428,8 @@ const OnlinePayment = ({ cartTotal, onCheckout, loading, checkoutLoading, cartDe
                 </div>
                 <div>
                   <h4 className="font-medium text-lg">Khalti Direct</h4>
-                  <p className="text-sm text-gray-500">Pay directly through Khalti portal</p>
+                  <p className="text-sm text-gray-500">The payment will be non-refundable once made </p>
                 </div>
-              </div>
-              <div className="flex items-center">
-                <span className="text-sm bg-green-50 text-green-700 px-3 py-1 rounded-md">Secure</span>
               </div>
             </div>
           </div>
