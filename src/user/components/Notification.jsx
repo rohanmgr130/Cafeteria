@@ -198,7 +198,7 @@ const Notification = () => {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold flex items-center">
-          <Bell className="mr-2 h-6 w-6 text-blue-500" />
+          <Bell className="mr-2 mt-16 h-6 w-6 text-blue-500" />
           Notifications
           {getUnreadCount() > 0 && (
             <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">

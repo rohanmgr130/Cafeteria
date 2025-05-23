@@ -48,6 +48,8 @@ const AdminDashboard = () => {
           const ordersResponse = await axios.get(`${API_BASE_URL}/api/order/get-all-orders`, {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           });
+
+          console.log('ordersResponse', ordersResponse);
           
           // Properly handle different response structures
           if (ordersResponse.data && ordersResponse.data.orders) {
@@ -58,8 +60,24 @@ const AdminDashboard = () => {
             ordersData = [];
             console.warn("Orders data structure unexpected:", ordersResponse.data);
           }
+
+          const ordersWithUsers = await Promise.all(
+            ordersData.map(async (order) => {
+              const userId = order?.cartData?.userId;
+              const userData = await fetchUserData(userId);
+
+              console.log('userData', userData)
+              return {
+                ...order,
+                user: userData?.fullname
+              };
+            })
+          );
+
+          console.log('set ordersWithUsers', ordersWithUsers);
           
-          setRecentOrders(ordersData);
+          setRecentOrders(ordersWithUsers);
+
           
           // Calculate order statistics - use optional chaining and nullish coalescing
           const stats = {
@@ -93,7 +111,9 @@ const AdminDashboard = () => {
           const usersResponse = await axios.get(`${API_BASE_URL}/api/users`, {
             headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
           });
-          const userData = usersResponse.data || [];
+
+          console.log('usersResponse', usersResponse);
+          const userData = usersResponse.data.data || [];
           setUsers(Array.isArray(userData) ? userData : []);
         } catch (err) {
           console.error("Error fetching users:", err);
@@ -142,90 +162,114 @@ const AdminDashboard = () => {
     
     fetchData();
   }, []);
+
+  const fetchUserData = async (userId) => {
+    const token = localStorage.getItem('token'); 
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      // Assume API response format: { success: true, data: { ...userData } }
+      return data.success ? data.data : null;
+    } catch (err) {
+      console.error('Error fetching user data:', err);
+      return null;
+    }
+  };
+
   
   // Generate sales data from orders
   const generateSalesData = (ordersObj) => {
+    console.log('ordersObj', ordersObj);
     // Ensure orders is an array
     const orders = ordersObj?.orders || [];
-    
-    // Get orders from last 5 months
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    // Define months
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
     const now = new Date();
-    const currentMonth = now.getMonth();
-    
-    // Initialize data for last 5 months
+    const currentMonth = now.getMonth(); // 0-based (0 = Jan)
+    const currentYear = now.getFullYear();
+
+    // Initialize last 5 months data
     const data = [];
     for (let i = 4; i >= 0; i--) {
-      const monthIndex = (currentMonth - i + 12) % 12;
+      const date = new Date(currentYear, currentMonth - i, 1);
       data.push({
-        name: months[monthIndex],
+        name: months[date.getMonth()],
+        year: date.getFullYear(),
         sales: 0
       });
     }
+
+    // Calculate total sales
+    orders.forEach(order => {
+      const orderDate = new Date(order.createdAt);
+      const month = orderDate.getMonth();
+      const year = orderDate.getFullYear();
+
+      // Skip cancelled orders
+      if (order.orderStatus === 'Cancelled') return;
+
+      // Find matching month-year in data
+      const entry = data.find(d => d.year === year && d.name === months[month]);
+      if (entry) {
+        entry.sales += order.cartData.finalTotal;
+      }
+    });
+
+    // Format result without year if not needed
+    const result = data.map(({ name, sales }) => ({ name, sales }));
+
+    console.log(result);
     
-    // Populate with real data if orders exists and is an array
-    if (Array.isArray(orders)) {
-      orders.forEach(order => {
-        if (!order) return;
-        
-        const orderDate = new Date(order.createdAt || order.date || Date.now());
-        const orderMonth = orderDate.getMonth();
-        const monthName = months[orderMonth];
-        
-        // If order is from last 5 months, add to appropriate month
-        const monthData = data.find(m => m.name === monthName);
-        if (monthData) {
-          monthData.sales += parseFloat(order.total || 0);
-        }
-      });
-    }
-    
-    setSalesData(data);
+    setSalesData(result);
   };
   
   // Generate category data
   const generateCategoryData = (menuItems, categories) => {
     const catData = [];
-    const categoryMap = {};
-    
-    // Create a map of category ids to names - ensure categories.categories exists
-    if (categories?.categories && Array.isArray(categories.categories)) {
-      categories.categories.forEach(cat => {
-        if (cat && cat._id) {
-          categoryMap[cat._id] = cat.name || 'Unknown';
-        }
-      });
-    }
-    
-    // Count items per category - ensure menuItems is an array
+    const validCategoryNames = categories.categories.map(cat => cat.name);
+
+    // Count menu items per category
     if (Array.isArray(menuItems)) {
       menuItems.forEach(item => {
-        if (!item) return;
-        
-        const catName = item.category ? (categoryMap[item.category] || 'Other') : 'Other';
-        
-        const existingCat = catData.find(c => c.name === catName);
-        if (existingCat) {
-          existingCat.value++;
+        if (!item || !item.categories) return;
+
+        const catName = validCategoryNames.includes(item.categories)
+          ? item.categories
+          : 'Other';
+
+        const existing = catData.find(c => c.name === catName);
+        if (existing) {
+          existing.value += 1;
         } else {
-          catData.push({
-            name: catName,
-            value: 1
-          });
+          catData.push({ name: catName, value: 1 });
         }
       });
     }
-    
+
     setCategoryData(catData);
   };
 
+
+
   // Function to calculate total sales from orders
   const calculateTotalSales = () => {
+    console.log('recentOrders', recentOrders)
     if (!Array.isArray(recentOrders) || recentOrders.length === 0) return 0;
     
     return recentOrders.reduce((sum, order) => {
       if (!order) return sum;
-      return sum + parseFloat(order.total || 0);
+      return sum + parseFloat(order.cartData.finalTotal || 0);
     }, 0).toFixed(2);
   };
   
@@ -264,7 +308,7 @@ const AdminDashboard = () => {
             <FaDollarSign className="text-green-500 text-3xl mr-4" />
             <div>
               <h2 className="text-sm font-medium text-gray-500">Total Sales</h2>
-              <p className="text-2xl font-bold mt-2">${calculateTotalSales()}</p>
+              <p className="text-2xl font-bold mt-2">Rs. {calculateTotalSales()}</p>
             </div>
           </div>
           <div className="bg-white p-6 rounded shadow flex items-center">
@@ -300,7 +344,7 @@ const AdminDashboard = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip formatter={(value) => `$${value}`} />
+                  <Tooltip formatter={(value) => `Rs. ${value}`} />
                   <Legend />
                   <Line type="monotone" dataKey="sales" stroke="#3B82F6" activeDot={{ r: 8 }} />
                 </LineChart>
@@ -349,7 +393,7 @@ const AdminDashboard = () => {
               <table className="min-w-full bg-white">
                 <thead>
                   <tr className="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
-                    <th className="py-3 px-6 text-left">Order ID</th>
+                    {/* <th className="py-3 px-6 text-left">Order ID</th> */}
                     <th className="py-3 px-6 text-left">Customer</th>
                     <th className="py-3 px-6 text-left">Date</th>
                     <th className="py-3 px-6 text-right">Amount</th>
@@ -359,10 +403,10 @@ const AdminDashboard = () => {
                 <tbody className="text-gray-600 text-sm">
                   {recentOrders.slice(0, 5).map((order, index) => order && (
                     <tr key={order._id || order.id || index} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="py-3 px-6 text-left">{order.orderNumber || order._id || 'N/A'}</td>
-                      <td className="py-3 px-6 text-left">{order.userName || (order.user && order.user.name) || 'N/A'}</td>
+                      {/* <td className="py-3 px-6 text-left">{order.orderNumber || order._id || 'N/A'}</td> */}
+                      <td className="py-3 px-6 text-left">{order.user || 'N/A'}</td>
                       <td className="py-3 px-6 text-left">{new Date(order.createdAt || order.date || Date.now()).toLocaleDateString()}</td>
-                      <td className="py-3 px-6 text-right">${parseFloat(order.total || 0).toFixed(2)}</td>
+                      <td className="py-3 px-6 text-right">Rs.{parseFloat(order.cartData.finalTotal || 0).toFixed(2)}</td>
                       <td className="py-3 px-6 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           (order.orderStatus || "").toLowerCase() === 'completed' ? 'bg-green-200 text-green-800' :
@@ -1084,7 +1128,7 @@ const AdminDashboard = () => {
                 defaultChecked={true}
               />
               <label htmlFor="enableCashOnDelivery" className="text-gray-700 text-sm">
-                Enable Cash on Delivery
+                Enable Cash on 
               </label>
             </div>
           </div>
@@ -1114,7 +1158,7 @@ const AdminDashboard = () => {
             <li>
               <a 
                 href="#" 
-                className={`flex items-center py-2 px-4 rounded ${activeTab === "dashboard" ? "bg-blue-700" : "hover:bg-blue-700"}`}
+                className={`flex items-center py-2 px-4 rounded Rs {activeTab === "dashboard" ? "bg-blue-700" : "hover:bg-blue-700"}`}
                 onClick={() => setActiveTab("dashboard")}
               >
                 <FaClipboardList className="mr-3" />
@@ -1124,7 +1168,7 @@ const AdminDashboard = () => {
             <li>
               <a 
                 href="#" 
-                className={`flex items-center py-2 px-4 rounded ${activeTab === "users" ? "bg-blue-700" : "hover:bg-blue-700"}`}
+                className={`flex items-center py-2 px-4 rounded Rs {activeTab === "users" ? "bg-blue-700" : "hover:bg-blue-700"}`}
                 onClick={() => setActiveTab("users")}
               >
                 <FaUsers className="mr-3" />
@@ -1134,7 +1178,7 @@ const AdminDashboard = () => {
             <li>
               <a 
                 href="#" 
-                className={`flex items-center py-2 px-4 rounded ${activeTab === "orders" ? "bg-blue-700" : "hover:bg-blue-700"}`}
+                className={`flex items-center py-2 px-4 rounded Rs {activeTab === "orders" ? "bg-blue-700" : "hover:bg-blue-700"}`}
                 onClick={() => setActiveTab("orders")}
               >
                 <FaShoppingCart className="mr-3" />
@@ -1144,7 +1188,7 @@ const AdminDashboard = () => {
             <li>
               <a 
                 href="#" 
-                className={`flex items-center py-2 px-4 rounded ${activeTab === "menu" ? "bg-blue-700" : "hover:bg-blue-700"}`}
+                className={`flex items-center py-2 px-4 rounded Rs {activeTab === "menu" ? "bg-blue-700" : "hover:bg-blue-700"}`}
                 onClick={() => setActiveTab("menu")}
               >
                 <FaUtensils className="mr-3" />
@@ -1154,7 +1198,7 @@ const AdminDashboard = () => {
             <li>
               <a 
                 href="#" 
-                className={`flex items-center py-2 px-4 rounded ${activeTab === "promocodes" ? "bg-blue-700" : "hover:bg-blue-700"}`}
+                className={`flex items-center py-2 px-4 rounded Rs {activeTab === "promocodes" ? "bg-blue-700" : "hover:bg-blue-700"}`}
                 onClick={() => setActiveTab("promocodes")}
               >
                 <FaTag className="mr-3" />
@@ -1164,7 +1208,7 @@ const AdminDashboard = () => {
             <li>
               <a 
                 href="#" 
-                className={`flex items-center py-2 px-4 rounded ${activeTab === "reports" ? "bg-blue-700" : "hover:bg-blue-700"}`}
+                className={`flex items-center py-2 px-4 rounded Rs {activeTab === "reports" ? "bg-blue-700" : "hover:bg-blue-700"}`}
                 onClick={() => setActiveTab("reports")}
               >
                 <FaChartBar className="mr-3" />
@@ -1174,7 +1218,7 @@ const AdminDashboard = () => {
             <li>
               <a 
                 href="#" 
-                className={`flex items-center py-2 px-4 rounded ${activeTab === "settings" ? "bg-blue-700" : "hover:bg-blue-700"}`}
+                className={`flex items-center py-2 px-4 rounded Rs {activeTab === "settings" ? "bg-blue-700" : "hover:bg-blue-700"}`}
                 onClick={() => setActiveTab("settings")}
               >
                 <FaCogs className="mr-3" />

@@ -2,6 +2,11 @@ import React, { useState, useEffect } from "react";
 import { FaEye, FaTrashAlt, FaBan } from "react-icons/fa";
 import Footer from "../components/FooterPart";
 import Navbar from "../components/Navbar";
+// Choose one of these toast libraries:
+// Option 1: react-toastify
+import { toast } from 'react-toastify';
+// Option 2: react-hot-toast (comment out react-toastify if using this)
+// import toast from 'react-hot-toast';
 
 const OrderHistory = () => {
   const [orderHistory, setOrderHistory] = useState(null);
@@ -11,6 +16,7 @@ const OrderHistory = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ open: false, type: '', orderId: null });
 
   // Fetch user ID and token from localStorage
   const userId = localStorage.getItem("id");
@@ -36,6 +42,7 @@ const OrderHistory = () => {
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
+        toast.error("Failed to fetch user data");
       }
     };
     
@@ -62,6 +69,7 @@ const OrderHistory = () => {
       if (!userId) {
         setError("User ID not found in localStorage");
         setLoading(false);
+        toast.error("User ID not found. Please log in again.");
         return;
       }
 
@@ -95,9 +103,11 @@ const OrderHistory = () => {
           });
           
           setOrderDetails(detailsMap);
+          toast.success("Order history loaded successfully");
         } else {
           // Handle the case when API returns no orders
           setOrderHistory(null);
+          toast.info("No orders found");
         }
         
         setLoading(false);
@@ -105,6 +115,7 @@ const OrderHistory = () => {
         console.error("Error fetching orders:", err);
         setError(err.message);
         setLoading(false);
+        toast.error("Failed to load order history");
       }
     };
 
@@ -113,19 +124,26 @@ const OrderHistory = () => {
 
   // Handle deleting an order from history
   const handleDeleteOrder = async (orderId) => {
-    if (!window.confirm("Are you sure you want to remove this order from your history?")) {
-      return;
-    }
+    setConfirmModal({ open: true, type: 'delete', orderId });
+  };
+
+  // Confirm delete action
+  const confirmDeleteOrder = async () => {
+    const orderId = confirmModal.orderId;
+    setConfirmModal({ open: false, type: '', orderId: null });
     
     // Get the authentication token from localStorage
     const token = localStorage.getItem("token");
     
     if (!token) {
-      alert("Authentication token not found. Please log in again.");
+      toast.error("Authentication token not found. Please log in again.");
       return;
     }
     
     try {
+      // Show loading toast
+      const loadingToast = toast.loading("Deleting order...");
+      
       const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/delete/${orderId}`, {
         method: "DELETE",
         headers: {
@@ -135,6 +153,9 @@ const OrderHistory = () => {
       });
       
       const data = await res.json();
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
       
       if (!res.ok) {
         throw new Error(data.message || "Failed to delete order");
@@ -154,9 +175,11 @@ const OrderHistory = () => {
         delete newDetails[orderId];
         setOrderDetails(newDetails);
       }
+      
+      toast.success("Order removed from history successfully!");
     } catch (err) {
       console.error("Error deleting order:", err);
-      alert(`Error deleting order: ${err.message}`);
+      toast.error(`Failed to delete order: ${err.message}`);
     }
   };
 
@@ -206,28 +229,39 @@ const OrderHistory = () => {
           ...prevDetails,
           [orderId]: data.order
         }));
+        
+        toast.success("Order details loaded successfully");
       } else {
         console.error("API returned success false or no order data");
+        toast.error("Failed to load order details");
       }
     } catch (err) {
       console.error("Error fetching order details:", err);
+      toast.error("Error loading order details");
     }
   };
 
   // Handle cancelling an order
   const handleCancelOrder = async (orderId) => {
-    if (!window.confirm("Are you sure you want to cancel this order?")) {
-      return;
-    }
+    setConfirmModal({ open: true, type: 'cancel', orderId });
+  };
+
+  // Confirm cancel action
+  const confirmCancelOrder = async () => {
+    const orderId = confirmModal.orderId;
+    setConfirmModal({ open: false, type: '', orderId: null });
     
     const token = localStorage.getItem("token");
     
     if (!token) {
-      alert("Authentication token not found. Please log in again.");
+      toast.error("Authentication token not found. Please log in again.");
       return;
     }
     
     try {
+      // Show loading toast
+      const loadingToast = toast.loading("Cancelling order...");
+      
       const res = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/order/update-order/${orderId}`, {
         method: "POST",
         headers: {
@@ -238,6 +272,9 @@ const OrderHistory = () => {
       });
       
       const data = await res.json();
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
       
       if (!res.ok) {
         throw new Error(data.message || "Failed to cancel order");
@@ -254,10 +291,10 @@ const OrderHistory = () => {
         }
       }));
       
-      alert("Order has been cancelled successfully.");
+      toast.success("Order has been cancelled successfully!");
     } catch (err) {
       console.error("Error cancelling order:", err);
-      alert(`Error cancelling order: ${err.message}`);
+      toast.error(`Failed to cancel order: ${err.message}`);
     }
   };
 
@@ -448,6 +485,43 @@ const OrderHistory = () => {
         </div>
       </div>
 
+      {/* Confirmation Modal */}
+      {confirmModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                {confirmModal.type === 'delete' ? 'Delete Order' : 'Cancel Order'}
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {confirmModal.type === 'delete' 
+                  ? 'Are you sure you want to remove this order from your history? This action cannot be undone.'
+                  : 'Are you sure you want to cancel this order? This action cannot be undone.'
+                }
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setConfirmModal({ open: false, type: '', orderId: null })}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmModal.type === 'delete' ? confirmDeleteOrder : confirmCancelOrder}
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
+                    confirmModal.type === 'delete' 
+                      ? 'bg-red-600 hover:bg-red-700' 
+                      : 'bg-orange-600 hover:bg-orange-700'
+                  }`}
+                >
+                  {confirmModal.type === 'delete' ? 'Yes, Delete' : 'Yes, Cancel Order'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Order Details Modal */}
       {viewModalOpen && selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -604,10 +678,7 @@ const OrderHistory = () => {
               <div>
                 {orderDetails[selectedOrder] && orderDetails[selectedOrder].orderStatus === 'pending' && (
                   <button
-                    onClick={() => {
-                      handleCancelOrder(selectedOrder);
-                      closeModal();
-                    }}
+                    onClick={() => handleCancelOrder(selectedOrder)}
                     className="bg-orange-500 hover:bg-orange-600 text-white font-medium px-5 py-2 rounded-md"
                   >
                     Cancel Order

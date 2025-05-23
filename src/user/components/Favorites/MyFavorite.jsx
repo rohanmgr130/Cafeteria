@@ -474,7 +474,7 @@ function MyFavorite() {
   }, [filters.priceRange, filters.sortBy, filters.type, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-white mt-11 pt-6 pb-12 px-4 sm:px-6">
+    <div className="min-h-screen bg-white mt-14 pt-6 pb-12 px-4 sm:px-6">
       {/* Toast Notification */}
       {toast.visible && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-xl transition-all duration-300 transform ${

@@ -380,7 +380,7 @@ export const deleteNotificationByRole = async (role, id) => {
  * @param {string} id - Firebase push ID
  */
 export const deleteUserNotification = async (userId, id) => {
-  await remove(ref(database, `notifications/user-${userId}/${id}`));
+  await remove(ref(database, `notifications/user/${id}`));
 };
 
 /**

@@ -42,11 +42,7 @@ const Nav = () => {
 
   // Logout handler function
   const handleLogout = () => {
-    // Clear all items from localStorage
     localStorage.clear();
-    // Or if you only want to remove specific items:
-    // localStorage.removeItem('token');
-    // localStorage.removeItem('user');
 
     // Redirect to login page
     navigate('/login');
@@ -56,7 +52,7 @@ const Nav = () => {
     <div className="w-64 h-screen bg-gray-800 text-gray-200 flex flex-col p-5 fixed shadow-lg">
       {/* Logo Section */}
       <div className="flex justify-center mb-8">
-        <img src="/logo.png" alt="Logo" className="w-28 h-auto rounded-md" />
+        <img src="Cafe1.png" alt="Logo" className="w-28 h-auto rounded-md" />
       </div>
 
       {/* Menu Section */}

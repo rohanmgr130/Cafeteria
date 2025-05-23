@@ -182,8 +182,8 @@ function Navbar() {
           <div className="flex justify-between items-center h-full">
             {/* Logo */}
             <div className="flex-shrink-0 flex items-center">
-              <Link to="/" className="text-2xl font-bold text-white">
-                Logo
+              <Link to="/">
+                <img src="/Cafe1.png" alt="Logo" className="h-16 w-auto max-w-[180px]" />
               </Link>
             </div>
 
