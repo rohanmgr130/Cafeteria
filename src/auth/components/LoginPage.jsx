@@ -12,9 +12,47 @@ const LoginPage = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const navigate = useNavigate();
 
+  // Email validation function
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Enhanced validation with specific toast messages
+  const validateForm = () => {
+    // Clear previous error
+    setError(null);
+
+    // Check if email is empty
+    if (!email.trim()) {
+      toast.error('Please enter your email address');
+      return false;
+    }
+
+    // Check email format
+    if (!validateEmail(email)) {
+      toast.error('Please enter a valid email address');
+      return false;
+    }
+
+    // Check if password is empty
+    if (!password.trim()) {
+      toast.error('Please enter your password');
+      return false;
+    }
+
+    // Check password length
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return false;
+    }
+
+    return true;
+  };
+
   const handleLogin = async () => {
-    if (!email || !password) {
-      toast.error('Please fill in all fields');
+    // Validate form before submission
+    if (!validateForm()) {
       return;
     }
 
@@ -39,14 +77,14 @@ const LoginPage = () => {
         localStorage.setItem('token', token);
         localStorage.setItem('email', user.email);
         localStorage.setItem('fullname', user.fullname);
-        const myImage = process.env.REACT_APP_API_BASE_URL +  user.profileImage
+        const myImage = process.env.REACT_APP_API_BASE_URL + user.profileImage
         if(user.profileImage){
           localStorage.setItem("profileImage", myImage)
         }
         localStorage.setItem('id', user.id);
         localStorage.setItem('role', user.role);
 
-        toast.success('Login successful!');
+        toast.success('Login successful! Redirecting...');
 
         // Redirect based on role
         setTimeout(() => {
@@ -64,12 +102,22 @@ const LoginPage = () => {
           }
         }, 1000);
       } else {
-        setError(data.message || 'Login failed!');
-        toast.error(data.message || 'Login failed!');
+        const errorMessage = data.message || 'Login failed!';
+        setError(errorMessage);
+        
+        // Show specific error toasts based on the error message
+        if (errorMessage.toLowerCase().includes('password')) {
+          toast.error('Incorrect password. Please try again.');
+        } else if (errorMessage.toLowerCase().includes('email') || errorMessage.toLowerCase().includes('user')) {
+          toast.error('Email not found. Please check your email or create an account.');
+        } else {
+          toast.error(errorMessage);
+        }
       }
     } catch (error) {
-      setError('Something went wrong. Please try again later.');
-      toast.error('Something went wrong. Please try again later.');
+      const errorMessage = 'Something went wrong. Please try again later.';
+      setError(errorMessage);
+      toast.error('Network error. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -81,13 +129,50 @@ const LoginPage = () => {
     }
   };
 
+  const handleForgotPassword = () => {
+    // Validate email before allowing forgot password
+    if (!email.trim()) {
+      toast.error('Please enter your email address first');
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    
+    toast.success('If this email exists, you will receive a password reset link shortly');
+    navigate('/forgot-password');
+  };
+
   return (
       <div
           className="flex justify-center items-center min-h-screen bg-gradient-to-br from-pink-100 to-blue-100"
           onKeyDown={handleKeyDown}
           tabIndex="0"
       >
-        <Toaster position="top-right" />
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              duration: 3000,
+              theme: {
+                primary: '#4aed88',
+              },
+            },
+            error: {
+              duration: 5000,
+              theme: {
+                primary: '#ff4b4b',
+              },
+            },
+          }} 
+        />
         <div className="relative bg-white p-8 rounded-xl shadow-lg w-96">
           <div
               className="absolute top-[-70px] left-1/2 transform -translate-x-1/2 w-24 h-24 rounded-full bg-white bg-cover bg-center shadow-lg"
@@ -107,6 +192,11 @@ const LoginPage = () => {
                 className="w-full p-3 pl-10 mt-2 border rounded-lg text-lg border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                onBlur={() => {
+                  if (email && !validateEmail(email)) {
+                    toast.error('Please enter a valid email format');
+                  }
+                }}
             />
           </div>
 
@@ -119,6 +209,11 @@ const LoginPage = () => {
                 className="w-full p-3 pl-10 mt-2 border rounded-lg text-lg border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onBlur={() => {
+                  if (password && password.length < 6) {
+                    toast.error('Password should be at least 6 characters');
+                  }
+                }}
             />
             <FontAwesomeIcon
                 icon={isPasswordVisible ? faEyeSlash : faEye}
@@ -130,8 +225,8 @@ const LoginPage = () => {
           {/* Login Button */}
           <button
               className={`w-full p-3 mt-6 rounded-lg text-lg font-semibold ${
-                  loading ? 'bg-gray-400' : 'bg-green-500 text-white'
-              } disabled:opacity-50`}
+                  loading ? 'bg-gray-400' : 'bg-green-500 text-white hover:bg-green-600'
+              } disabled:opacity-50 transition-colors`}
               onClick={handleLogin}
               disabled={loading}
           >
@@ -139,22 +234,26 @@ const LoginPage = () => {
           </button>
 
           {/* Error Message */}
-          {error && <div className="text-red-500 text-sm text-center mt-2">{error}</div>}
+          {error && (
+            <div className="text-red-500 text-sm text-center mt-4 p-2 bg-red-50 rounded border border-red-200">
+              {error}
+            </div>
+          )}
 
           {/* Links */}
-            <div className="text-center mt-4">
-              <button
-                onClick={() => navigate('/forgot-password')}
-                className="text-blue-500 text-sm hover:underline"
-              >
-                Forgot Password?
-              </button>
-            </div>
-            <div className="text-center mt-2">
-              <a href="/register" className="text-blue-500 text-sm hover:underline">
-                Create an Account
-              </a>
-            </div>
+          <div className="text-center mt-4">
+            <button
+              onClick={handleForgotPassword}
+              className="text-blue-500 text-sm hover:underline hover:text-blue-700 transition-colors"
+            >
+              Forgot Password?
+            </button>
+          </div>
+          <div className="text-center mt-2">
+            <a href="/register" className="text-blue-500 text-sm hover:underline hover:text-blue-700 transition-colors">
+              Create an Account
+            </a>
+          </div>
         </div>
       </div>
   );

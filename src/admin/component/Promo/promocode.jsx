@@ -1,852 +1,6 @@
-// import React, { useState, useEffect, useCallback } from 'react';
-// import axios from 'axios';
-// import { broadcastPromocode } from '../../../services/notification.services'; // Adjust path as needed
-
-// function Promo() {
-//    // States for form inputs
-//    const [code, setCode] = useState('');
-//    const [prefix, setPrefix] = useState('');
-//    const [discountType, setDiscountType] = useState('percentage');
-//    const [discountValue, setDiscountValue] = useState('');
-//    const [expiryDate, setExpiryDate] = useState('');
-//    const [minOrderValue, setMinOrderValue] = useState('0');
-//    const [maxDiscountAmount, setMaxDiscountAmount] = useState('');
-//    const [bulkCount, setBulkCount] = useState('10');
-   
-//    // States for notification options
-//    const [notifyUsers, setNotifyUsers] = useState(true);
-//    const [notificationMessage, setNotificationMessage] = useState('');
-   
-//    // States for data
-//    const [promoCodes, setPromoCodes] = useState([]);
-//    const [loading, setLoading] = useState(false);
-//    const [error, setError] = useState('');
-//    const [success, setSuccess] = useState('');
-//    const [currentPage, setCurrentPage] = useState(1);
-//    const [totalPages, setTotalPages] = useState(1);
-//    const [selectedPromoCode, setSelectedPromoCode] = useState(null);
-//    const [view, setView] = useState('list'); // list, create, bulk, detail
-
-//   const token = localStorage.getItem('token');
-
-//   const config = useCallback(() => ({
-//     headers: {
-//       Authorization: `Bearer ${token}`,
-//       'Content-Type': 'application/json',
-//     },
-//   }), [token]);
-
-//   const fetchPromoCodes = useCallback(async () => {
-//     try {
-//       setLoading(true);
-//       const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/get-all-code`, config());
-//       if (res.data.success) {
-//         setPromoCodes(res.data.promoCodes);
-//         setTotalPages(res.data.totalPages);
-//       }
-//     } catch (err) {
-//       setError(err.response?.data?.message || 'Failed to fetch promo codes');
-//     } finally {
-//       setLoading(false);
-//     }
-//   }, [currentPage, config]);
-
-//   useEffect(() => {
-//     fetchPromoCodes();
-//   }, [fetchPromoCodes]);
-
-//   const createPromoCode = async (e) => {
-//     e.preventDefault();
-//     try {
-//       setLoading(true);
-//       setError('');
-//       setSuccess('');
-
-//       const data = {
-//         code: code || undefined,
-//         prefix,
-//         discountType,
-//         discountValue: Number(discountValue),
-//         expiryDate,
-//         minOrderValue: minOrderValue ? Number(minOrderValue) : 0,
-//         maxDiscountAmount: maxDiscountAmount ? Number(maxDiscountAmount) : null,
-//       };
-
-//       const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/create`, data, config());
-
-//       if (res.data.success) {
-//         setSuccess('Promo code created successfully!');
-        
-//         // If notification is enabled, broadcast the promocode to all users
-//         if (notifyUsers && res.data.promoCode) {
-//           try {
-//             const promoData = {
-//               code: res.data.promoCode.code,
-//               discount: res.data.promoCode.discountType === 'percentage' 
-//                 ? res.data.promoCode.discountValue / 100 
-//                 : res.data.promoCode.discountValue,
-//               expiry: res.data.promoCode.expiryDate,
-//               minPurchase: res.data.promoCode.minOrderValue,
-//               maxDiscount: res.data.promoCode.maxDiscountAmount,
-//               description: notificationMessage || `New promo code: ${res.data.promoCode.code} for ${res.data.promoCode.discountValue}${res.data.promoCode.discountType === 'percentage' ? '%' : ' Rs.'} off!`
-//             };
-            
-//             await broadcastPromocode(promoData);
-//             setSuccess('Promo code created and notification sent to all users!');
-//           } catch (notifError) {
-//             console.error('Failed to send promocode notifications:', notifError);
-//             // Still show success since the promo code was created
-//             setSuccess('Promo code created successfully, but failed to notify users.');
-//           }
-//         }
-        
-//         resetForm();
-//         fetchPromoCodes();
-//         setView('list');
-//       }
-//     } catch (err) {
-//       setError(err.response?.data?.message || 'Failed to create promo code');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const generateBulkCodes = async (e) => {
-//     e.preventDefault();
-//     try {
-//       setLoading(true);
-//       setError('');
-//       setSuccess('');
-
-//       const data = {
-//         count: Number(bulkCount),
-//         prefix,
-//         discountType,
-//         discountValue: Number(discountValue),
-//         expiryDate,
-//         minOrderValue: minOrderValue ? Number(minOrderValue) : 0,
-//         maxDiscountAmount: maxDiscountAmount ? Number(maxDiscountAmount) : null,
-//       };
-
-//       const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/generate-bulk`, data, config());
-
-//       if (res.data.success) {
-//         setSuccess(`Generated ${bulkCount} promo codes successfully!`);
-        
-//         // If notification is enabled and there are codes generated, broadcast the first one
-//         if (notifyUsers && res.data.promoCodes && res.data.promoCodes.length > 0) {
-//           try {
-//             const promoCode = res.data.promoCodes[0]; // Get the first generated code
-//             const promoData = {
-//               code: promoCode.code,
-//               discount: promoCode.discountType === 'percentage' 
-//                 ? promoCode.discountValue / 100 
-//                 : promoCode.discountValue,
-//               expiry: promoCode.expiryDate,
-//               minPurchase: promoCode.minOrderValue,
-//               maxDiscount: promoCode.maxDiscountAmount,
-//               description: notificationMessage || `New promo code batch available! Use ${promoCode.code} for ${promoCode.discountValue}${promoCode.discountType === 'percentage' ? '%' : ' Rs.'} off!`
-//             };
-            
-//             await broadcastPromocode(promoData);
-//             setSuccess(`Generated ${bulkCount} promo codes and notification sent to all users!`);
-//           } catch (notifError) {
-//             console.error('Failed to send promocode notifications:', notifError);
-//             // Still show success since the promo codes were created
-//             setSuccess(`Generated ${bulkCount} promo codes successfully, but failed to notify users.`);
-//           }
-//         }
-        
-//         resetForm();
-//         fetchPromoCodes();
-//         setView('list');
-//       }
-//     } catch (err) {
-//       setError(err.response?.data?.message || 'Failed to generate bulk promo codes');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // Function to broadcast an existing promo code
-//   const broadcastExistingCode = async (promoCode) => {
-//     try {
-//       setLoading(true);
-//       setError('');
-      
-//       const promoData = {
-//         code: promoCode.code,
-//         discount: promoCode.discountType === 'percentage' 
-//           ? promoCode.discountValue / 100 
-//           : promoCode.discountValue,
-//         expiry: promoCode.expiryDate,
-//         minPurchase: promoCode.minOrderValue,
-//         maxDiscount: promoCode.maxDiscountAmount,
-//         description: `Don't miss out! Use promo code ${promoCode.code} for ${promoCode.discountValue}${promoCode.discountType === 'percentage' ? '%' : ' Rs.'} off!`
-//       };
-      
-//       await broadcastPromocode(promoData);
-//       setSuccess(`Notification for promo code ${promoCode.code} sent to all users!`);
-//     } catch (err) {
-//       setError('Failed to send promocode notification');
-//       console.error('Error broadcasting promocode:', err);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const deletePromoCode = async (id) => {
-//     if (!window.confirm('Are you sure you want to delete this promo code?')) return;
-//     try {
-//       setLoading(true);
-//       setError('');
-//       setSuccess('');
-
-//       const res = await axios.delete(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/${id}`, config());
-
-//       if (res.data.success) {
-//         setSuccess('Promo code deleted successfully!');
-//         fetchPromoCodes();
-//       }
-//     } catch (err) {
-//       setError(err.response?.data?.message || 'Failed to delete promo code');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const getPromoCodeDetails = async (id) => {
-//     try {
-//       setLoading(true);
-//       setError('');
-//       const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/${id}`, config());
-//       if (res.data.success) {
-//         setSelectedPromoCode(res.data.promoCode);
-//         setView('detail');
-//       }
-//     } catch (err) {
-//       setError(err.response?.data?.message || 'Failed to fetch promo code details');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const updatePromoCode = async (e) => {
-//     e.preventDefault();
-//     try {
-//       setLoading(true);
-//       setError('');
-//       setSuccess('');
-//       const data = {
-//         isActive: selectedPromoCode.isActive,
-//         expiryDate: selectedPromoCode.expiryDate,
-//         minOrderValue: selectedPromoCode.minOrderValue,
-//         maxDiscountAmount: selectedPromoCode.maxDiscountAmount,
-//       };
-
-//       const res = await axios.put(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/${selectedPromoCode._id}`, data, config());
-
-//       if (res.data.success) {
-//         setSuccess('Promo code updated successfully!');
-//         fetchPromoCodes();
-//         setView('list');
-//       }
-//     } catch (err) {
-//       setError(err.response?.data?.message || 'Failed to update promo code');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const resetForm = () => {
-//     setCode('');
-//     setPrefix('');
-//     setDiscountType('percentage');
-//     setDiscountValue('');
-//     setExpiryDate('');
-//     setMinOrderValue('0');
-//     setMaxDiscountAmount('');
-//     setBulkCount('10');
-//     setNotifyUsers(true);
-//     setNotificationMessage('');
-//   };
-
-//   const formatDate = (dateString) => {
-//     const date = new Date(dateString);
-//     return date.toLocaleDateString();
-//   };
-
-//   return (
-//     <div className="promocode-container p-4 ml-64"> {/* FIXED: added ml-64 to avoid nav overlap */}
-//       <h1 className="text-2xl font-bold mb-4">Promo Code Management</h1>
-
-//       {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4">{success}</div>}
-//       {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-4">{error}</div>}
-
-//       <div className="flex gap-4 mb-6">
-//         <button onClick={() => setView('list')} className={`px-4 py-2 rounded ${view === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>View All</button>
-//         <button onClick={() => setView('create')} className={`px-4 py-2 rounded ${view === 'create' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Create New</button>
-//         <button onClick={() => setView('bulk')} className={`px-4 py-2 rounded ${view === 'bulk' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Generate Bulk</button>
-//       </div>
-      
-//       {/* Create single promo code form */}
-//       {view === 'create' && (
-//         <div className="bg-white p-6 rounded shadow-md">
-//           <h2 className="text-xl font-semibold mb-4">Create New Promo Code</h2>
-//           <form onSubmit={createPromoCode}>
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Code (Optional)</label>
-//                 <input
-//                   type="text"
-//                   value={code}
-//                   onChange={(e) => setCode(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   placeholder="Enter code or leave blank for auto-generation"
-//                 />
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Prefix (Optional)</label>
-//                 <input
-//                   type="text"
-//                   value={prefix}
-//                   onChange={(e) => setPrefix(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   placeholder="e.g., SUMMER"
-//                 />
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Discount Type</label>
-//                 <select
-//                   value={discountType}
-//                   onChange={(e) => setDiscountType(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                 >
-//                   <option value="percentage">Percentage</option>
-//                   <option value="fixed">Fixed Amount</option>
-//                 </select>
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">
-//                   Discount Value ({discountType === 'percentage' ? '%' : 'Rs.'})
-//                 </label>
-//                 <input
-//                   type="number"
-//                   value={discountValue}
-//                   onChange={(e) => setDiscountValue(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   placeholder={discountType === 'percentage' ? 'e.g., 10' : 'e.g., 25'}
-//                   required
-//                 />
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Expiry Date</label>
-//                 <input
-//                   type="date"
-//                   value={expiryDate}
-//                   onChange={(e) => setExpiryDate(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   required
-//                 />
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Minimum Order Value (Rs.)</label>
-//                 <input
-//                   type="number"
-//                   value={minOrderValue}
-//                   onChange={(e) => setMinOrderValue(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   placeholder="e.g., 50"
-//                 />
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Max Discount Amount (Rs.)</label>
-//                 <input
-//                   type="number"
-//                   value={maxDiscountAmount}
-//                   onChange={(e) => setMaxDiscountAmount(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   placeholder="e.g., 100"
-//                 />
-//               </div>
-//             </div>
-            
-//             {/* Notification options */}
-//             <div className="mt-6 border-t pt-4">
-//               <h3 className="text-lg font-medium mb-3">Notification Options</h3>
-              
-//               <div className="mb-4">
-//                 <label className="flex items-center cursor-pointer">
-//                   <input
-//                     type="checkbox"
-//                     checked={notifyUsers}
-//                     onChange={(e) => setNotifyUsers(e.target.checked)}
-//                     className="form-checkbox h-5 w-5 text-blue-600"
-//                   />
-//                   <span className="ml-2 text-gray-700">Notify all users about this promocode</span>
-//                 </label>
-//               </div>
-              
-//               {notifyUsers && (
-//                 <div className="mb-4">
-//                   <label className="block text-gray-700 mb-2">Custom Notification Message (Optional)</label>
-//                   <textarea
-//                     value={notificationMessage}
-//                     onChange={(e) => setNotificationMessage(e.target.value)}
-//                     className="w-full px-3 py-2 border rounded"
-//                     placeholder="e.g., Special discount for the summer season! Use code SUMMER20 to get 20% off your order."
-//                     rows="3"
-//                   ></textarea>
-//                   <p className="text-xs text-gray-500 mt-1">
-//                     Leave blank to use a default message based on the promo code details.
-//                   </p>
-//                 </div>
-//               )}
-//             </div>
-            
-//             <div className="mt-4">
-//               <button
-//                 type="submit"
-//                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-//                 disabled={loading}
-//               >
-//                 {loading ? 'Creating...' : 'Create Promo Code'}
-//               </button>
-//               <button
-//                 type="button"
-//                 onClick={resetForm}
-//                 className="px-4 py-2 bg-gray-300 text-gray-700 rounded ml-2 hover:bg-gray-400"
-//               >
-//                 Reset
-//               </button>
-//             </div>
-//           </form>
-//         </div>
-//       )}
-      
-//       {/* Generate bulk promo codes form */}
-//       {view === 'bulk' && (
-//         <div className="bg-white p-6 rounded shadow-md">
-//           <h2 className="text-xl font-semibold mb-4">Generate Bulk Promo Codes</h2>
-//           <form onSubmit={generateBulkCodes}>
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Number of Codes</label>
-//                 <input
-//                   type="number"
-//                   value={bulkCount}
-//                   onChange={(e) => setBulkCount(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   placeholder="e.g., 10"
-//                   min="1"
-//                   max="100"
-//                   required
-//                 />
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Prefix (Optional)</label>
-//                 <input
-//                   type="text"
-//                   value={prefix}
-//                   onChange={(e) => setPrefix(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   placeholder="e.g., SUMMER"
-//                 />
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Discount Type</label>
-//                 <select
-//                   value={discountType}
-//                   onChange={(e) => setDiscountType(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                 >
-//                   <option value="percentage">Percentage</option>
-//                   <option value="fixed">Fixed Amount</option>
-//                 </select>
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">
-//                   Discount Value ({discountType === 'percentage' ? '%' : 'Rs.'})
-//                 </label>
-//                 <input
-//                   type="number"
-//                   value={discountValue}
-//                   onChange={(e) => setDiscountValue(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   placeholder={discountType === 'percentage' ? 'e.g., 10' : 'e.g., 25'}
-//                   required
-//                 />
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Expiry Date</label>
-//                 <input
-//                   type="date"
-//                   value={expiryDate}
-//                   onChange={(e) => setExpiryDate(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   required
-//                 />
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Minimum Order Value (Rs.)</label>
-//                 <input
-//                   type="number"
-//                   value={minOrderValue}
-//                   onChange={(e) => setMinOrderValue(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   placeholder="e.g., 50"
-//                 />
-//               </div>
-              
-//               <div className="mb-4">
-//                 <label className="block text-gray-700 mb-2">Max Discount Amount (Rs.)</label>
-//                 <input
-//                   type="number"
-//                   value={maxDiscountAmount}
-//                   onChange={(e) => setMaxDiscountAmount(e.target.value)}
-//                   className="w-full px-3 py-2 border rounded"
-//                   placeholder="e.g., 100"
-//                 />
-//               </div>
-//             </div>
-            
-//             {/* Notification options */}
-//             <div className="mt-6 border-t pt-4">
-//               <h3 className="text-lg font-medium mb-3">Notification Options</h3>
-              
-//               <div className="mb-4">
-//                 <label className="flex items-center cursor-pointer">
-//                   <input
-//                     type="checkbox"
-//                     checked={notifyUsers}
-//                     onChange={(e) => setNotifyUsers(e.target.checked)}
-//                     className="form-checkbox h-5 w-5 text-blue-600"
-//                   />
-//                   <span className="ml-2 text-gray-700">Notify all users about these promocodes</span>
-//                 </label>
-//                 <p className="text-xs text-gray-500 mt-1 ml-7">
-//                   Note: Only one notification will be sent for the first code in the batch.
-//                 </p>
-//               </div>
-              
-//               {notifyUsers && (
-//                 <div className="mb-4">
-//                   <label className="block text-gray-700 mb-2">Custom Notification Message (Optional)</label>
-//                   <textarea
-//                     value={notificationMessage}
-//                     onChange={(e) => setNotificationMessage(e.target.value)}
-//                     className="w-full px-3 py-2 border rounded"
-//                     placeholder="e.g., New batch of promo codes available! Get your discount today."
-//                     rows="3"
-//                   ></textarea>
-//                   <p className="text-xs text-gray-500 mt-1">
-//                     Leave blank to use a default message based on the promo code details.
-//                   </p>
-//                 </div>
-//               )}
-//             </div>
-            
-//             <div className="mt-4">
-//               <button
-//                 type="submit"
-//                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-//                 disabled={loading}
-//               >
-//                 {loading ? 'Generating...' : 'Generate Promo Codes'}
-//               </button>
-//               <button
-//                 type="button"
-//                 onClick={resetForm}
-//                 className="px-4 py-2 bg-gray-300 text-gray-700 rounded ml-2 hover:bg-gray-400"
-//               >
-//                 Reset
-//               </button>
-//             </div>
-//           </form>
-//         </div>
-//       )}
-      
-//       {/* Promo code detail/edit view */}
-//       {view === 'detail' && selectedPromoCode && (
-//         <div className="bg-white p-6 rounded shadow-md">
-//           <h2 className="text-xl font-semibold mb-4">Promo Code Details</h2>
-          
-//           <div className="mb-4">
-//             <div className="flex items-center mb-2">
-//               <span className="text-2xl font-bold">{selectedPromoCode.code}</span>
-//               <span className={`ml-2 px-2 py-1 rounded text-xs ${
-//                 selectedPromoCode.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-//               }`}>
-//                 {selectedPromoCode.isActive ? 'Active' : 'Inactive'}
-//               </span>
-//               <span className={`ml-2 px-2 py-1 rounded text-xs ${
-//                 selectedPromoCode.isUsed ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'
-//               }`}>
-//                 {selectedPromoCode.isUsed ? 'Used' : 'Unused'}
-//               </span>
-//             </div>
-            
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-//               <div>
-//                 <p><strong>Discount:</strong> {selectedPromoCode.discountValue}{selectedPromoCode.discountType === 'percentage' ? '%' : ' Rs.'}</p>
-//                 <p><strong>Minimum Order:</strong> Rs. {selectedPromoCode.minOrderValue}</p>
-//                 <p><strong>Max Discount Amount:</strong> {selectedPromoCode.maxDiscountAmount ? `Rs. ${selectedPromoCode.maxDiscountAmount}` : 'No limit'}</p>
-//               </div>
-//               <div>
-//                 <p><strong>Expiry Date:</strong> {formatDate(selectedPromoCode.expiryDate)}</p>
-//                 <p><strong>Created On:</strong> {formatDate(selectedPromoCode.createdAt)}</p>
-//                 <p><strong>Created By:</strong> {selectedPromoCode.createdBy?.name || 'N/A'}</p>
-//               </div>
-//             </div>
-            
-//             {selectedPromoCode.isUsed && (
-//               <div className="mt-4 p-3 bg-gray-50 rounded">
-//                 <h3 className="font-semibold mb-2">Usage Details</h3>
-//                 <p><strong>Used By:</strong> {selectedPromoCode.usedBy?.name || 'N/A'}</p>
-//                 <p><strong>Email:</strong> {selectedPromoCode.usedBy?.email || 'N/A'}</p>
-//                 <p><strong>Used On:</strong> {selectedPromoCode.usedAt ? formatDate(selectedPromoCode.usedAt) : 'N/A'}</p>
-//               </div>
-//             )}
-            
-//             {/* Add broadcast option */}
-//             {!selectedPromoCode.isUsed && selectedPromoCode.isActive && (
-//               <div className="mt-6 pt-4 border-t">
-//                 <h3 className="font-semibold mb-2">Broadcast Notification</h3>
-//                 <p className="text-sm text-gray-600 mb-3">
-//                   Send a notification about this promo code to all users.
-//                 </p>
-//                 <button
-//                   onClick={() => broadcastExistingCode(selectedPromoCode)}
-//                   className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-//                   disabled={loading}
-//                 >
-//                   {loading ? 'Sending...' : 'Broadcast to All Users'}
-//                 </button>
-//               </div>
-//             )}
-//           </div>
-          
-//           {!selectedPromoCode.isUsed && (
-//             <form onSubmit={updatePromoCode} className="mt-6">
-//               <h3 className="font-semibold mb-2">Edit Promo Code</h3>
-//               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//                 <div className="mb-4">
-//                   <label className="block text-gray-700 mb-2">Status</label>
-//                   <select
-//                     value={selectedPromoCode.isActive.toString()}
-//                     onChange={(e) => setSelectedPromoCode({
-//                       ...selectedPromoCode,
-//                       isActive: e.target.value === 'true'
-//                     })}
-//                     className="w-full px-3 py-2 border rounded"
-//                   >
-//                     <option value="true">Active</option>
-//                     <option value="false">Inactive</option>
-//                   </select>
-//                 </div>
-                
-//                 <div className="mb-4">
-//                   <label className="block text-gray-700 mb-2">Expiry Date</label>
-//                   <input
-//                     type="date"
-//                     value={selectedPromoCode.expiryDate?.split('T')[0] || ''}
-//                     onChange={(e) => setSelectedPromoCode({
-//                       ...selectedPromoCode,
-//                       expiryDate: e.target.value
-//                     })}
-//                     className="w-full px-3 py-2 border rounded"
-//                   />
-//                 </div>
-                
-//                 <div className="mb-4">
-//                   <label className="block text-gray-700 mb-2">Minimum Order Value (Rs.)</label>
-//                   <input
-//                     type="number"
-//                     value={selectedPromoCode.minOrderValue}
-//                     onChange={(e) => setSelectedPromoCode({
-//                       ...selectedPromoCode,
-//                       minOrderValue: e.target.value
-//                     })}
-//                     className="w-full px-3 py-2 border rounded"
-//                   />
-//                 </div>
-                
-//                 <div className="mb-4">
-//                   <label className="block text-gray-700 mb-2">Max Discount Amount (Rs.)</label>
-//                   <input
-//                     type="number"
-//                     value={selectedPromoCode.maxDiscountAmount || ''}
-//                     onChange={(e) => setSelectedPromoCode({
-//                       ...selectedPromoCode,
-//                       maxDiscountAmount: e.target.value || null
-//                     })}
-//                     className="w-full px-3 py-2 border rounded"
-//                   />
-//                 </div>
-//               </div>
-              
-//               <div className="flex gap-2 mt-4">
-//                 <button
-//                   type="submit"
-//                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-//                   disabled={loading}
-//                 >
-//                   {loading ? 'Updating...' : 'Update Promo Code'}
-//                 </button>
-//                 <button
-//                   type="button"
-//                   onClick={() => deletePromoCode(selectedPromoCode._id)}
-//                   className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-//                   disabled={loading}
-//                 >
-//                   Delete
-//                 </button>
-//                 <button
-//                   type="button"
-//                   onClick={() => setView('list')}
-//                   className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-//                 >
-//                   Back to List
-//                 </button>
-//               </div>
-//             </form>
-//           )}
-//         </div>
-//       )}
-      
-//       {/* Promo codes list view */}
-//       {view === 'list' && (
-//         <div className="bg-white overflow-auto rounded shadow">
-//           {loading && <p className="p-4 text-center">Loading promo codes...</p>}
-          
-//           {!loading && promoCodes.length === 0 && (
-//             <p className="p-4 text-center">No promo codes found. Create one to get started.</p>
-//           )}
-          
-//           {!loading && promoCodes.length > 0 && (
-//             <table className="min-w-full divide-y divide-gray-200">
-//               <thead className="bg-gray-50">
-//                 <tr>
-//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
-//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Discount</th>
-//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expires</th>
-//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-//                 </tr>
-//               </thead>
-//               <tbody className="bg-white divide-y divide-gray-200">
-//                 {promoCodes.map((promoCode) => (
-//                   <tr key={promoCode._id} className="hover:bg-gray-50">
-//                     <td className="px-6 py-4 whitespace-nowrap font-medium">{promoCode.code}</td>
-//                     <td className="px-6 py-4 whitespace-nowrap">
-//                       {promoCode.discountValue}
-//                       {promoCode.discountType === 'percentage' ? '%' : ' Rs.'}
-//                     </td>
-//                     <td className="px-6 py-4 whitespace-nowrap">
-//                       <span className={`px-2 py-1 rounded-full text-xs ${
-//                         !promoCode.isActive 
-//                           ? 'bg-red-100 text-red-800' 
-//                           : promoCode.isUsed 
-//                             ? 'bg-gray-100 text-gray-800'
-//                             : 'bg-green-100 text-green-800'
-//                       }`}>
-//                         {!promoCode.isActive 
-//                           ? 'Inactive' 
-//                           : promoCode.isUsed 
-//                             ? 'Used'
-//                             : 'Active'
-//                         }
-//                       </span>
-//                     </td>
-//                     <td className="px-6 py-4 whitespace-nowrap">
-//                       {formatDate(promoCode.expiryDate)}
-//                     </td>
-//                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-//                       <button
-//                         onClick={() => getPromoCodeDetails(promoCode._id)}
-//                         className="text-blue-600 hover:text-blue-900 mr-3"
-//                       >
-//                         View
-//                       </button>
-                      
-//                       {/* Add broadcast button for active, unused codes */}
-//                       {!promoCode.isUsed && promoCode.isActive && (
-//                         <button
-//                           onClick={() => broadcastExistingCode(promoCode)}
-//                           className="text-gray-600 hover:text-gray-900 mr-3"
-//                           title="Notify all users about this promo code"
-//                         >
-//                           Broadcast
-//                         </button>
-//                       )}
-                      
-//                       {!promoCode.isUsed && (
-//                         <button
-//                           onClick={() => deletePromoCode(promoCode._id)}
-//                           className="text-red-600 hover:text-red-900"
-//                         >
-//                           Delete
-//                         </button>
-//                       )}
-//                     </td>
-//                   </tr>
-//                 ))}
-//               </tbody>
-//             </table>
-//           )}
-          
-//           {/* Pagination */}
-//           {totalPages > 1 && (
-//             <div className="px-6 py-3 flex justify-between items-center border-t">
-//               <button
-//                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-//                 disabled={currentPage === 1}
-//                 className={`px-3 py-1 rounded ${
-//                   currentPage === 1 ? 'bg-gray-100 text-gray-400' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-//                 }`}
-//               >
-//                 Previous
-//               </button>
-              
-//               <span className="text-sm text-gray-700">
-//                 Page {currentPage} of {totalPages}
-//               </span>
-              
-//               <button
-//                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-//                 disabled={currentPage === totalPages}
-//                 className={`px-3 py-1 rounded ${
-//                   currentPage === totalPages ? 'bg-gray-100 text-gray-400' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-//                 }`}
-//               >
-//                 Next
-//               </button>
-//             </div>
-//           )}
-//         </div>
-//       )}
-      
-//     </div>
-//   );
-// }
-
-// export default Promo;
-
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { toast, Toaster } from 'react-hot-toast';
 import { broadcastPromocode } from '../../../services/notification.services'; // Adjust path as needed
 
 function Promo() {
@@ -854,6 +8,18 @@ function Promo() {
   const [code, setCode] = useState('');
   const [prefix, setPrefix] = useState('');
   const [discountType, setDiscountType] = useState('percentage');
+  
+  // Predefined prefix options
+  const prefixOptions = [
+    { value: '', label: 'No Prefix (Auto-generate only)' },
+    { value: 'WELCOME', label: 'WELCOME - New customer' },
+    { value: 'SUMMER', label: 'SUMMER - Summer sale' },
+    { value: 'WINTER', label: 'WINTER - Winter sale' },
+    { value: 'FESTIVE', label: 'FESTIVE - Festival offer' },
+    { value: 'WEEKEND', label: 'WEEKEND - Weekend deal' },
+    { value: 'STUDENT', label: 'STUDENT - Student discount' },
+
+  ];
   const [discountValue, setDiscountValue] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [minOrderValue, setMinOrderValue] = useState('');
@@ -867,8 +33,6 @@ function Promo() {
   // States for data
   const [promoCodes, setPromoCodes] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedPromoCode, setSelectedPromoCode] = useState(null);
@@ -876,6 +40,7 @@ function Promo() {
 
   // Validation states
   const [validationErrors, setValidationErrors] = useState({});
+  const [realTimeValidation, setRealTimeValidation] = useState({});
 
   const token = localStorage.getItem('token');
 
@@ -892,85 +57,219 @@ function Promo() {
     return today.toISOString().split('T')[0];
   };
 
-  // Validation function
-  const validateForm = (isCreateForm = true) => {
+  // Real-time validation helpers
+  const validateCodeStrength = (codeValue) => {
+    if (!codeValue) return { isValid: true, message: '' };
+    
+    const issues = [];
+    if (codeValue.length < 3) issues.push('minimum 3 characters');
+    if (codeValue.length > 20) issues.push('maximum 20 characters');
+    if (!/^[A-Z0-9]+$/.test(codeValue)) issues.push('only letters and numbers allowed');
+    if (/^\d+$/.test(codeValue)) issues.push('cannot be only numbers');
+    
+    return {
+      isValid: issues.length === 0,
+      message: issues.length > 0 ? `Code issues: ${issues.join(', ')}` : 'Valid code format'
+    };
+  };
+
+  const validatePrefix = (prefixValue) => {
+    if (!prefixValue) return { isValid: true, message: 'No prefix selected' };
+    
+    const selectedOption = prefixOptions.find(opt => opt.value === prefixValue);
+    return {
+      isValid: true,
+      message: selectedOption ? `Selected: ${selectedOption.label}` : 'Valid prefix'
+    };
+  };
+
+  const validateDiscountValue = (value, type) => {
+    if (!value) return { isValid: false, message: 'Discount value is required' };
+    
+    const numValue = Number(value);
+    if (isNaN(numValue) || numValue <= 0) {
+      return { isValid: false, message: 'Must be a positive number' };
+    }
+    
+    if (type === 'percentage') {
+      if (numValue > 100) return { isValid: false, message: 'Cannot exceed 100%' };
+      if (numValue < 1) return { isValid: false, message: 'Minimum 1% discount' };
+      return { isValid: true, message: `${numValue}% discount` };
+    } else {
+      if (numValue > 10000) return { isValid: false, message: 'Cannot exceed Rs. 10,000' };
+      if (numValue < 10) return { isValid: false, message: 'Minimum Rs. 10 discount' };
+      return { isValid: true, message: `Rs. ${numValue} discount` };
+    }
+  };
+
+  const validateExpiryDate = (dateValue) => {
+    if (!dateValue) return { isValid: false, message: 'Expiry date is required' };
+    
+    const today = new Date();
+    const expiry = new Date(dateValue);
+    const maxDate = new Date();
+    maxDate.setFullYear(today.getFullYear() + 2);
+    
+    if (expiry <= today) return { isValid: false, message: 'Must be a future date' };
+    if (expiry > maxDate) return { isValid: false, message: 'Cannot be more than 2 years ahead' };
+    
+    const daysUntilExpiry = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+    return { isValid: true, message: `Expires in ${daysUntilExpiry} days` };
+  };
+
+  // Enhanced validation function with toast notifications
+  const validateForm = (isCreateForm = true, showToasts = true) => {
     const errors = {};
+    let hasErrors = false;
 
     // Code validation (only for single create, not bulk)
-    if (isCreateForm && view === 'create' && code && code.trim().length < 3) {
-      errors.code = 'Code must be at least 3 characters long';
-    }
-
-    // Prefix validation
-    if (prefix && (prefix.trim().length < 2 || prefix.trim().length > 10)) {
-      errors.prefix = 'Prefix must be between 2-10 characters';
-    }
-
-    // Discount value validation
-    if (!discountValue || isNaN(discountValue) || Number(discountValue) <= 0) {
-      errors.discountValue = 'Discount value must be a positive number';
-    }
-
-    if (discountType === 'percentage' && Number(discountValue) > 100) {
-      errors.discountValue = 'Percentage discount cannot exceed 100%';
-    }
-
-    if (discountType === 'fixed' && Number(discountValue) > 10000) {
-      errors.discountValue = 'Fixed discount cannot exceed Rs. 10,000';
-    }
-
-    // Expiry date validation
-    if (!expiryDate) {
-      errors.expiryDate = 'Expiry date is required';
-    } else if (expiryDate < getTodayDate()) {
-      errors.expiryDate = 'Expiry date cannot be in the past';
-    } else {
-      const expiry = new Date(expiryDate);
-      const today = new Date();
-      const maxDate = new Date();
-      maxDate.setFullYear(today.getFullYear() + 2);
-      
-      if (expiry > maxDate) {
-        errors.expiryDate = 'Expiry date cannot be more than 2 years from now';
+    if (isCreateForm && view === 'create' && code) {
+      const codeValidation = validateCodeStrength(code);
+      if (!codeValidation.isValid) {
+        errors.code = codeValidation.message;
+        if (showToasts) toast.error(`Invalid promo code: ${codeValidation.message}`);
+        hasErrors = true;
       }
     }
 
-    // Min order value validation
-    if (minOrderValue && (isNaN(minOrderValue) || Number(minOrderValue) < 0)) {
-      errors.minOrderValue = 'Minimum order value must be a positive number or zero';
+    // Prefix validation
+    if (prefix) {
+      const validPrefixes = prefixOptions.map(opt => opt.value).filter(val => val !== '');
+      if (!validPrefixes.includes(prefix)) {
+        errors.prefix = 'Please select a valid prefix from the dropdown';
+        if (showToasts) toast.error('Invalid prefix selection');
+        hasErrors = true;
+      }
     }
 
-    if (minOrderValue && Number(minOrderValue) > 100000) {
-      errors.minOrderValue = 'Minimum order value cannot exceed Rs. 1,00,000';
+    // Discount value validation
+    const discountValidation = validateDiscountValue(discountValue, discountType);
+    if (!discountValidation.isValid) {
+      errors.discountValue = discountValidation.message;
+      if (showToasts) toast.error(`Discount error: ${discountValidation.message}`);
+      hasErrors = true;
+    }
+
+    // Expiry date validation
+    const expiryValidation = validateExpiryDate(expiryDate);
+    if (!expiryValidation.isValid) {
+      errors.expiryDate = expiryValidation.message;
+      if (showToasts) toast.error(`Expiry date error: ${expiryValidation.message}`);
+      hasErrors = true;
+    }
+
+    // Min order value validation
+    if (minOrderValue) {
+      const minOrder = Number(minOrderValue);
+      if (isNaN(minOrder) || minOrder < 0) {
+        errors.minOrderValue = 'Must be a positive number or zero';
+        if (showToasts) toast.error('Invalid minimum order value');
+        hasErrors = true;
+      } else if (minOrder > 100000) {
+        errors.minOrderValue = 'Cannot exceed Rs. 1,00,000';
+        if (showToasts) toast.error('Minimum order value is too high');
+        hasErrors = true;
+      }
     }
 
     // Max discount amount validation
-    if (maxDiscountAmount && (isNaN(maxDiscountAmount) || Number(maxDiscountAmount) <= 0)) {
-      errors.maxDiscountAmount = 'Maximum discount amount must be a positive number';
-    }
-
-    if (maxDiscountAmount && Number(maxDiscountAmount) > 50000) {
-      errors.maxDiscountAmount = 'Maximum discount amount cannot exceed Rs. 50,000';
+    if (maxDiscountAmount) {
+      const maxDiscount = Number(maxDiscountAmount);
+      if (isNaN(maxDiscount) || maxDiscount <= 0) {
+        errors.maxDiscountAmount = 'Must be a positive number';
+        if (showToasts) toast.error('Invalid maximum discount amount');
+        hasErrors = true;
+      } else if (maxDiscount > 50000) {
+        errors.maxDiscountAmount = 'Cannot exceed Rs. 50,000';
+        if (showToasts) toast.error('Maximum discount amount is too high');
+        hasErrors = true;
+      }
     }
 
     // Bulk count validation
     if (view === 'bulk') {
-      if (!bulkCount || isNaN(bulkCount) || Number(bulkCount) < 1 || Number(bulkCount) > 100) {
-        errors.bulkCount = 'Bulk count must be between 1 and 100';
+      const bulk = Number(bulkCount);
+      if (!bulkCount || isNaN(bulk) || bulk < 1 || bulk > 100) {
+        errors.bulkCount = 'Must be between 1 and 100';
+        if (showToasts) toast.error('Invalid bulk count (1-100 allowed)');
+        hasErrors = true;
       }
     }
 
-    // Custom notification message validation
+    // Notification message validation
     if (notifyUsers && notificationMessage && notificationMessage.trim().length > 500) {
-      errors.notificationMessage = 'Notification message cannot exceed 500 characters';
+      errors.notificationMessage = 'Cannot exceed 500 characters';
+      if (showToasts) toast.error('Notification message is too long');
+      hasErrors = true;
     }
 
     // Cross-field validation
     if (discountType === 'fixed' && maxDiscountAmount && Number(discountValue) > Number(maxDiscountAmount)) {
-      errors.discountValue = 'Fixed discount cannot be greater than maximum discount amount';
+      errors.discountValue = 'Fixed discount cannot exceed maximum discount amount';
+      if (showToasts) toast.error('Fixed discount amount is higher than maximum discount cap');
+      hasErrors = true;
     }
 
-    return errors;
+    // Logical validation
+    if (minOrderValue && discountType === 'fixed' && Number(discountValue) >= Number(minOrderValue)) {
+      if (showToasts) toast.warning('⚠️ Fixed discount is close to minimum order value - customers might abuse this');
+    }
+
+    return { errors, hasErrors };
+  };
+
+  // Real-time validation on input change
+  const handleInputChange = (field, value, additionalValidation = null) => {
+    // Update the field value
+    switch (field) {
+      case 'code': setCode(value.toUpperCase()); break;
+      case 'prefix': setPrefix(value); break;
+      case 'discountValue': setDiscountValue(value); break;
+      case 'expiryDate': setExpiryDate(value); break;
+      case 'minOrderValue': setMinOrderValue(value); break;
+      case 'maxDiscountAmount': setMaxDiscountAmount(value); break;
+      case 'bulkCount': setBulkCount(value); break;
+      case 'notificationMessage': setNotificationMessage(value); break;
+      default: break;
+    }
+
+    // Clear validation errors for this field
+    if (validationErrors[field]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+
+    // Perform real-time validation
+    let validation = { isValid: true, message: '' };
+    
+    switch (field) {
+      case 'code':
+        validation = validateCodeStrength(value);
+        break;
+      case 'discountValue':
+        validation = validateDiscountValue(value, discountType);
+        break;
+      case 'expiryDate':
+        validation = validateExpiryDate(value);
+        break;
+      case 'prefix':
+        validation = validatePrefix(value);
+        break;
+      default:
+        break;
+    }
+
+    setRealTimeValidation(prev => ({
+      ...prev,
+      [field]: validation
+    }));
+
+    // Additional custom validation
+    if (additionalValidation) {
+      additionalValidation(value);
+    }
   };
 
   const fetchPromoCodes = useCallback(async () => {
@@ -983,9 +282,12 @@ function Promo() {
       if (res.data.success) {
         setPromoCodes(res.data.promoCodes);
         setTotalPages(res.data.totalPages);
+        toast.success(`Loaded ${res.data.promoCodes.length} promo codes`);
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch promo codes');
+      const errorMessage = err.response?.data?.message || 'Failed to fetch promo codes';
+      toast.error(errorMessage);
+      console.error('Fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -998,18 +300,27 @@ function Promo() {
   const createPromoCode = async (e) => {
     e.preventDefault();
     
-    const errors = validateForm(true);
+    // Show validation loading toast
+    const validationToast = toast.loading('Validating promo code details...');
+    
+    const { errors, hasErrors } = validateForm(true, true);
     setValidationErrors(errors);
 
-    if (Object.keys(errors).length > 0) {
-      setError('Please fix the validation errors before submitting');
+    toast.dismiss(validationToast);
+
+    if (hasErrors) {
+      toast.error('Please fix all validation errors before proceeding', {
+        duration: 4000,
+        icon: '❌'
+      });
       return;
     }
 
     try {
       setLoading(true);
-      setError('');
-      setSuccess('');
+      
+      // Show creation progress toast
+      const creationToast = toast.loading('Creating promo code...');
 
       const data = {
         code: code.trim() || undefined,
@@ -1023,12 +334,18 @@ function Promo() {
 
       const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/create`, data, config());
 
+      toast.dismiss(creationToast);
+
       if (res.data.success) {
-        setSuccess('Promo code created successfully!');
+        toast.success(`Promo code "${res.data.promoCode.code}" created successfully!`, {
+          duration: 4000
+        });
         
         // If notification is enabled, broadcast the promocode to all users
         if (notifyUsers && res.data.promoCode) {
           try {
+            const notificationToast = toast.loading('Sending notifications to users...');
+            
             const promoData = {
               code: res.data.promoCode.code,
               discount: res.data.promoCode.discountType === 'percentage' 
@@ -1041,10 +358,15 @@ function Promo() {
             };
             
             await broadcastPromocode(promoData);
-            setSuccess('Promo code created and notification sent to all users!');
+            toast.dismiss(notificationToast);
+            toast.success('Notifications sent to all users successfully!', {
+              duration: 3000
+            });
           } catch (notifError) {
             console.error('Failed to send promocode notifications:', notifError);
-            setSuccess('Promo code created successfully, but failed to notify users.');
+            toast.error('Promo code created but failed to notify users', {
+              duration: 4000
+            });
           }
         }
         
@@ -1053,7 +375,23 @@ function Promo() {
         setView('list');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create promo code');
+      const errorMessage = err.response?.data?.message || 'Failed to create promo code';
+      
+      if (err.response?.status === 409) {
+        toast.error('Promo code already exists. Please use a different code.', {
+          duration: 5000
+        });
+      } else if (err.response?.status === 400) {
+        toast.error(`Invalid data: ${errorMessage}`, {
+          duration: 5000
+        });
+      } else {
+        toast.error(`Creation failed: ${errorMessage}`, {
+          duration: 5000
+        });
+      }
+      
+      console.error('Create promo code error:', err);
     } finally {
       setLoading(false);
     }
@@ -1062,18 +400,25 @@ function Promo() {
   const generateBulkCodes = async (e) => {
     e.preventDefault();
     
-    const errors = validateForm(false);
+    const validationToast = toast.loading('Validating bulk generation parameters...');
+    
+    const { errors, hasErrors } = validateForm(false, true);
     setValidationErrors(errors);
 
-    if (Object.keys(errors).length > 0) {
-      setError('Please fix the validation errors before submitting');
+    toast.dismiss(validationToast);
+
+    if (hasErrors) {
+      toast.error('Please fix validation errors before generating bulk codes', {
+        duration: 4000,
+        icon: '❌'
+      });
       return;
     }
 
     try {
       setLoading(true);
-      setError('');
-      setSuccess('');
+      
+      const generationToast = toast.loading(`Generating ${bulkCount} promo codes...`);
 
       const data = {
         count: Number(bulkCount),
@@ -1087,12 +432,18 @@ function Promo() {
 
       const res = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/generate-bulk`, data, config());
 
+      toast.dismiss(generationToast);
+
       if (res.data.success) {
-        setSuccess(`Generated ${bulkCount} promo codes successfully!`);
+        toast.success(`Successfully generated ${bulkCount} promo codes!`, {
+          duration: 4000
+        });
         
         // If notification is enabled and there are codes generated, broadcast the first one
         if (notifyUsers && res.data.promoCodes && res.data.promoCodes.length > 0) {
           try {
+            const notificationToast = toast.loading('Notifying users about new promo batch...');
+            
             const promoCode = res.data.promoCodes[0];
             const promoData = {
               code: promoCode.code,
@@ -1106,10 +457,15 @@ function Promo() {
             };
             
             await broadcastPromocode(promoData);
-            setSuccess(`Generated ${bulkCount} promo codes and notification sent to all users!`);
+            toast.dismiss(notificationToast);
+            toast.success('Batch notification sent to all users!', {
+              duration: 3000
+            });
           } catch (notifError) {
             console.error('Failed to send promocode notifications:', notifError);
-            setSuccess(`Generated ${bulkCount} promo codes successfully, but failed to notify users.`);
+            toast.error('Bulk codes generated but failed to notify users', {
+              duration: 4000
+            });
           }
         }
         
@@ -1118,7 +474,19 @@ function Promo() {
         setView('list');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to generate bulk promo codes');
+      const errorMessage = err.response?.data?.message || 'Failed to generate bulk promo codes';
+      
+      if (err.response?.status === 429) {
+        toast.error('Too many requests. Please wait before generating more codes.', {
+          duration: 6000
+        });
+      } else {
+        toast.error(`Bulk generation failed: ${errorMessage}`, {
+          duration: 5000
+        });
+      }
+      
+      console.error('Bulk generation error:', err);
     } finally {
       setLoading(false);
     }
@@ -1127,7 +495,8 @@ function Promo() {
   const broadcastExistingCode = async (promoCode) => {
     try {
       setLoading(true);
-      setError('');
+      
+      const broadcastToast = toast.loading(`Broadcasting "${promoCode.code}" to all users...`);
       
       const promoData = {
         code: promoCode.code,
@@ -1141,9 +510,14 @@ function Promo() {
       };
       
       await broadcastPromocode(promoData);
-      setSuccess(`Notification for promo code ${promoCode.code} sent to all users!`);
+      toast.dismiss(broadcastToast);
+      toast.success(`"${promoCode.code}" broadcasted to all users successfully!`, {
+        duration: 4000
+      });
     } catch (err) {
-      setError('Failed to send promocode notification');
+      toast.error(`Failed to broadcast "${promoCode.code}". Please try again.`, {
+        duration: 5000
+      });
       console.error('Error broadcasting promocode:', err);
     } finally {
       setLoading(false);
@@ -1151,24 +525,35 @@ function Promo() {
   };
 
   const deletePromoCode = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this promo code? This action cannot be undone.')) return;
+    const promoToDelete = promoCodes.find(p => p._id === id);
+    const confirmMessage = `Are you sure you want to delete "${promoToDelete?.code}"? This action cannot be undone.`;
+    
+    if (!window.confirm(confirmMessage)) return;
     
     try {
       setLoading(true);
-      setError('');
-      setSuccess('');
+      
+      const deleteToast = toast.loading('Deleting promo code...');
 
       const res = await axios.delete(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/${id}`, config());
 
+      toast.dismiss(deleteToast);
+
       if (res.data.success) {
-        setSuccess('Promo code deleted successfully!');
+        toast.success(`🗑️ Promo code "${promoToDelete?.code}" deleted successfully!`, {
+          duration: 3000
+        });
         fetchPromoCodes();
         if (view === 'detail') {
           setView('list');
         }
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to delete promo code');
+      const errorMessage = err.response?.data?.message || 'Failed to delete promo code';
+      toast.error(`❌ Delete failed: ${errorMessage}`, {
+        duration: 5000
+      });
+      console.error('Delete error:', err);
     } finally {
       setLoading(false);
     }
@@ -1177,14 +562,24 @@ function Promo() {
   const getPromoCodeDetails = async (id) => {
     try {
       setLoading(true);
-      setError('');
+      
+      const fetchToast = toast.loading('Loading promo code details...');
+      
       const res = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/${id}`, config());
+      
+      toast.dismiss(fetchToast);
+      
       if (res.data.success) {
         setSelectedPromoCode(res.data.promoCode);
         setView('detail');
+        toast.success('📋 Promo code details loaded');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch promo code details');
+      const errorMessage = err.response?.data?.message || 'Failed to fetch promo code details';
+      toast.error(`❌ ${errorMessage}`, {
+        duration: 4000
+      });
+      console.error('Fetch details error:', err);
     } finally {
       setLoading(false);
     }
@@ -1193,21 +588,18 @@ function Promo() {
   const updatePromoCode = async (e) => {
     e.preventDefault();
     
-    // Validate expiry date for update
+    // Quick validation for update
     const updateErrors = {};
     if (selectedPromoCode.expiryDate && selectedPromoCode.expiryDate.split('T')[0] < getTodayDate()) {
       updateErrors.expiryDate = 'Expiry date cannot be in the past';
-    }
-
-    if (Object.keys(updateErrors).length > 0) {
-      setError('Please fix the validation errors before updating');
+      toast.error('❌ Cannot set expiry date in the past');
       return;
     }
 
     try {
       setLoading(true);
-      setError('');
-      setSuccess('');
+      
+      const updateToast = toast.loading('Updating promo code...');
       
       const data = {
         isActive: selectedPromoCode.isActive,
@@ -1218,13 +610,21 @@ function Promo() {
 
       const res = await axios.put(`${process.env.REACT_APP_API_BASE_URL}/api/adminpromo/${selectedPromoCode._id}`, data, config());
 
+      toast.dismiss(updateToast);
+
       if (res.data.success) {
-        setSuccess('Promo code updated successfully!');
+        toast.success(`✅ "${selectedPromoCode.code}" updated successfully!`, {
+          duration: 3000
+        });
         fetchPromoCodes();
         setView('list');
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update promo code');
+      const errorMessage = err.response?.data?.message || 'Failed to update promo code';
+      toast.error(`❌ Update failed: ${errorMessage}`, {
+        duration: 5000
+      });
+      console.error('Update error:', err);
     } finally {
       setLoading(false);
     }
@@ -1242,8 +642,7 @@ function Promo() {
     setNotifyUsers(true);
     setNotificationMessage('');
     setValidationErrors({});
-    setError('');
-    setSuccess('');
+    setRealTimeValidation({});
   };
 
   const formatDate = (dateString) => {
@@ -1262,7 +661,7 @@ function Promo() {
     return expiryDate < today;
   };
 
-  // Input field component with validation
+  // Enhanced Input field component with real-time validation
   const InputField = ({ 
     label, 
     type = 'text', 
@@ -1274,34 +673,104 @@ function Promo() {
     max, 
     errorKey,
     helpText,
+    fieldName,
     ...props 
-  }) => (
-    <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-          validationErrors[errorKey] ? 'border-red-500 bg-red-50' : 'border-gray-300'
-        }`}
-        placeholder={placeholder}
-        min={min}
-        max={max}
-        {...props}
-      />
-      {helpText && <p className="text-xs text-gray-500 mt-1">{helpText}</p>}
-      {validationErrors[errorKey] && (
-        <p className="text-sm text-red-600 mt-1">{validationErrors[errorKey]}</p>
-      )}
-    </div>
-  );
+  }) => {
+    const hasError = validationErrors[errorKey];
+    const realTimeInfo = realTimeValidation[fieldName];
+    
+    return (
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {label}
+          {required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => {
+            onChange(e);
+            if (fieldName) {
+              handleInputChange(fieldName, e.target.value);
+            }
+          }}
+          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${
+            hasError 
+              ? 'border-red-500 bg-red-50 focus:ring-red-400' 
+              : realTimeInfo?.isValid === false
+              ? 'border-yellow-500 bg-yellow-50 focus:ring-yellow-400'
+              : realTimeInfo?.isValid === true
+              ? 'border-green-500 bg-green-50 focus:ring-green-400'
+              : 'border-gray-300 focus:ring-blue-500'
+          }`}
+          placeholder={placeholder}
+          min={min}
+          max={max}
+          {...props}
+        />
+        
+        {/* Real-time validation feedback */}
+        {realTimeInfo?.message && (
+          <p className={`text-xs mt-1 ${
+            realTimeInfo.isValid ? 'text-green-600' : 'text-yellow-600'
+          }`}>
+            {realTimeInfo.isValid ? '✓' : '⚠️'} {realTimeInfo.message}
+          </p>
+        )}
+        
+        {/* Help text */}
+        {helpText && !realTimeInfo?.message && (
+          <p className="text-xs text-gray-500 mt-1">{helpText}</p>
+        )}
+        
+        {/* Error message */}
+        {hasError && (
+          <p className="text-sm text-red-600 mt-1 font-medium">❌ {hasError}</p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Enhanced Toast Configuration */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+            maxWidth: '500px',
+          },
+          success: {
+            duration: 3000,
+            style: {
+              background: '#10B981',
+            },
+            iconTheme: {
+              primary: '#10B981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            duration: 5000,
+            style: {
+              background: '#EF4444',
+            },
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: '#fff',
+            },
+          },
+          loading: {
+            style: {
+              background: '#3B82F6',
+            },
+          },
+        }}
+      />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 ml-64">
         {/* Header */}
         <div className="mb-8">
@@ -1309,44 +778,13 @@ function Promo() {
           <p className="mt-2 text-gray-600">Create, manage, and track your promotional discount codes</p>
         </div>
 
-        {/* Alert Messages */}
-        {success && (
-          <div className="mb-6 bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-green-700">{success}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Navigation Tabs */}
         <div className="mb-8">
           <nav className="flex space-x-8" aria-label="Tabs">
             {[
               { key: 'list', label: 'All Promo Codes', icon: '📋' },
               { key: 'create', label: 'Create New', icon: '➕' },
-              { key: 'bulk', label: 'Bulk Generate', icon: '' }
+              { key: 'bulk', label: 'Bulk Generate', icon: '📦' }
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -1384,17 +822,58 @@ function Promo() {
                     onChange={(e) => setCode(e.target.value.toUpperCase())}
                     placeholder="Leave blank for auto-generation"
                     errorKey="code"
+                    fieldName="code"
                     helpText="Optional: Enter a custom code (min 3 characters) or leave blank for auto-generation"
                   />
 
-                  <InputField
-                    label="Prefix"
-                    value={prefix}
-                    onChange={(e) => setPrefix(e.target.value.toUpperCase())}
-                    placeholder="e.g., SUMMER, WINTER"
-                    errorKey="prefix"
-                    helpText="Optional: 2-10 characters prefix for auto-generated codes"
-                  />
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Prefix
+                    </label>
+                    <select
+                      value={prefix}
+                      onChange={(e) => {
+                        setPrefix(e.target.value);
+                        handleInputChange('prefix', e.target.value);
+                      }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-blue-500 transition-colors ${
+                        validationErrors.prefix 
+                          ? 'border-red-500 bg-red-50 focus:ring-red-400' 
+                          : realTimeValidation.prefix?.isValid === false
+                          ? 'border-yellow-500 bg-yellow-50 focus:ring-yellow-400'
+                          : realTimeValidation.prefix?.isValid === true
+                          ? 'border-green-500 bg-green-50 focus:ring-green-400'
+                          : 'border-gray-300 focus:ring-blue-500'
+                      }`}
+                    >
+                      {prefixOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    {/* Real-time validation feedback */}
+                    {realTimeValidation.prefix?.message && (
+                      <p className={`text-xs mt-1 ${
+                        realTimeValidation.prefix.isValid ? 'text-green-600' : 'text-yellow-600'
+                      }`}>
+                        {realTimeValidation.prefix.message}
+                      </p>
+                    )}
+                    
+                    {/* Help text */}
+                    {!realTimeValidation.prefix?.message && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Optional: Choose a prefix for auto-generated codes (e.g., SAVE123ABC)
+                      </p>
+                    )}
+                    
+                    {/* Error message */}
+                    {validationErrors.prefix && (
+                      <p className="text-sm text-red-600 mt-1 font-medium">{validationErrors.prefix}</p>
+                    )}
+                  </div>
 
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1402,7 +881,10 @@ function Promo() {
                     </label>
                     <select
                       value={discountType}
-                      onChange={(e) => setDiscountType(e.target.value)}
+                      onChange={(e) => {
+                        setDiscountType(e.target.value);
+                        handleInputChange('discountValue', discountValue);
+                      }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="percentage">Percentage Discount</option>
@@ -1421,6 +903,7 @@ function Promo() {
                     max={discountType === 'percentage' ? '100' : '10000'}
                     step={discountType === 'percentage' ? '0.01' : '1'}
                     errorKey="discountValue"
+                    fieldName="discountValue"
                     helpText={discountType === 'percentage' ? 'Maximum 100%' : 'Maximum Rs. 10,000'}
                   />
                 </div>
@@ -1434,6 +917,7 @@ function Promo() {
                     required
                     min={getTodayDate()}
                     errorKey="expiryDate"
+                    fieldName="expiryDate"
                     helpText="Must be a future date (max 2 years from now)"
                   />
 
@@ -1446,6 +930,7 @@ function Promo() {
                     min="0"
                     max="100000"
                     errorKey="minOrderValue"
+                    fieldName="minOrderValue"
                     helpText="Minimum cart value required to use this code"
                   />
 
@@ -1458,6 +943,7 @@ function Promo() {
                     min="1"
                     max="50000"
                     errorKey="maxDiscountAmount"
+                    fieldName="maxDiscountAmount"
                     helpText="Optional: Cap the discount amount (useful for percentage discounts)"
                   />
                 </div>
@@ -1465,7 +951,7 @@ function Promo() {
 
               {/* Notification Section */}
               <div className="mt-8 pt-6 border-t border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 mb-4"> Notification Settings</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Notification Settings</h3>
                 
                 <div className="mb-4">
                   <label className="flex items-center cursor-pointer">
@@ -1489,8 +975,11 @@ function Promo() {
                     </label>
                     <textarea
                       value={notificationMessage}
-                      onChange={(e) => setNotificationMessage(e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                      onChange={(e) => {
+                        setNotificationMessage(e.target.value);
+                        handleInputChange('notificationMessage', e.target.value);
+                      }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
                         validationErrors.notificationMessage ? 'border-red-500 bg-red-50' : 'border-gray-300'
                       }`}
                       placeholder="e.g., 🎉 Special discount alert! Get 20% off on your next order with code SAVE20"
@@ -1501,7 +990,7 @@ function Promo() {
                       <p className="text-xs text-gray-500">
                         Leave blank for auto-generated message
                       </p>
-                      <span className="text-xs text-gray-400">
+                      <span className={`text-xs ${notificationMessage.length > 450 ? 'text-red-400 font-medium' : 'text-gray-400'}`}>
                         {notificationMessage.length}/500
                       </span>
                     </div>
@@ -1515,7 +1004,7 @@ function Promo() {
               <div className="flex gap-4 mt-8">
                 <button
                   type="submit"
-                  className="flex-1 sm:flex-none px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 sm:flex-none px-6 py-3 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   disabled={loading}
                 >
                   {loading ? (
@@ -1527,7 +1016,7 @@ function Promo() {
                       Creating...
                     </>
                   ) : (
-                    ' Create Promo Code'
+                    'Create Promo Code'
                   )}
                 </button>
                 <button
@@ -1535,7 +1024,7 @@ function Promo() {
                   onClick={resetForm}
                   className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
                 >
-                   Reset Form
+                  Reset Form
                 </button>
               </div>
             </form>
@@ -1563,17 +1052,58 @@ function Promo() {
                     min="1"
                     max="100"
                     errorKey="bulkCount"
+                    fieldName="bulkCount"
                     helpText="Maximum 100 codes per batch"
                   />
 
-                  <InputField
-                    label="Prefix"
-                    value={prefix}
-                    onChange={(e) => setPrefix(e.target.value.toUpperCase())}
-                    placeholder="e.g., BULK, BATCH"
-                    errorKey="prefix"
-                    helpText="Optional: 2-10 characters prefix for all generated codes"
-                  />
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Prefix
+                    </label>
+                    <select
+                      value={prefix}
+                      onChange={(e) => {
+                        setPrefix(e.target.value);
+                        handleInputChange('prefix', e.target.value);
+                      }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-gray-500 transition-colors ${
+                        validationErrors.prefix 
+                          ? 'border-red-500 bg-red-50 focus:ring-red-400' 
+                          : realTimeValidation.prefix?.isValid === false
+                          ? 'border-yellow-500 bg-yellow-50 focus:ring-yellow-400'
+                          : realTimeValidation.prefix?.isValid === true
+                          ? 'border-green-500 bg-green-50 focus:ring-green-400'
+                          : 'border-gray-300 focus:ring-gray-500'
+                      }`}
+                    >
+                      {prefixOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    {/* Real-time validation feedback */}
+                    {realTimeValidation.prefix?.message && (
+                      <p className={`text-xs mt-1 ${
+                        realTimeValidation.prefix.isValid ? 'text-green-600' : 'text-yellow-600'
+                      }`}>
+                        {realTimeValidation.prefix.message}
+                      </p>
+                    )}
+                    
+                    {/* Help text */}
+                    {!realTimeValidation.prefix?.message && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Optional: Choose a prefix for all generated codes in this batch
+                      </p>
+                    )}
+                    
+                    {/* Error message */}
+                    {validationErrors.prefix && (
+                      <p className="text-sm text-red-600 mt-1 font-medium">{validationErrors.prefix}</p>
+                    )}
+                  </div>
 
                   <div className="mb-4">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1581,7 +1111,10 @@ function Promo() {
                     </label>
                     <select
                       value={discountType}
-                      onChange={(e) => setDiscountType(e.target.value)}
+                      onChange={(e) => {
+                        setDiscountType(e.target.value);
+                        handleInputChange('discountValue', discountValue);
+                      }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500"
                     >
                       <option value="percentage">Percentage Discount</option>
@@ -1600,6 +1133,7 @@ function Promo() {
                     max={discountType === 'percentage' ? '100' : '10000'}
                     step={discountType === 'percentage' ? '0.01' : '1'}
                     errorKey="discountValue"
+                    fieldName="discountValue"
                     helpText={discountType === 'percentage' ? 'Maximum 100%' : 'Maximum Rs. 10,000'}
                   />
                 </div>
@@ -1613,6 +1147,7 @@ function Promo() {
                     required
                     min={getTodayDate()}
                     errorKey="expiryDate"
+                    fieldName="expiryDate"
                     helpText="Must be a future date (max 2 years from now)"
                   />
 
@@ -1625,6 +1160,7 @@ function Promo() {
                     min="0"
                     max="100000"
                     errorKey="minOrderValue"
+                    fieldName="minOrderValue"
                     helpText="Minimum cart value required to use these codes"
                   />
 
@@ -1637,6 +1173,7 @@ function Promo() {
                     min="1"
                     max="50000"
                     errorKey="maxDiscountAmount"
+                    fieldName="maxDiscountAmount"
                     helpText="Optional: Cap the discount amount for all codes"
                   />
                 </div>
@@ -1644,7 +1181,7 @@ function Promo() {
 
               {/* Notification Section */}
               <div className="mt-8 pt-6 border-t border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900 mb-4"> Notification Settings</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">📱 Notification Settings</h3>
                 
                 <div className="mb-4">
                   <label className="flex items-center cursor-pointer">
@@ -1668,8 +1205,11 @@ function Promo() {
                     </label>
                     <textarea
                       value={notificationMessage}
-                      onChange={(e) => setNotificationMessage(e.target.value)}
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 ${
+                      onChange={(e) => {
+                        setNotificationMessage(e.target.value);
+                        handleInputChange('notificationMessage', e.target.value);
+                      }}
+                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 transition-colors ${
                         validationErrors.notificationMessage ? 'border-red-500 bg-red-50' : 'border-gray-300'
                       }`}
                       placeholder="e.g., 🎊 New batch of discount codes is here! Limited time offer - grab yours now!"
@@ -1680,7 +1220,7 @@ function Promo() {
                       <p className="text-xs text-gray-500">
                         Leave blank for auto-generated message
                       </p>
-                      <span className="text-xs text-gray-400">
+                      <span className={`text-xs ${notificationMessage.length > 450 ? 'text-red-400 font-medium' : 'text-gray-400'}`}>
                         {notificationMessage.length}/500
                       </span>
                     </div>
@@ -1706,7 +1246,7 @@ function Promo() {
                       Generating...
                     </>
                   ) : (
-                    ' Generate Bulk Codes'
+                    'Generate Bulk Codes'
                   )}
                 </button>
                 <button
@@ -1714,7 +1254,7 @@ function Promo() {
                   onClick={resetForm}
                   className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
                 >
-                   Reset Form
+                  Reset Form
                 </button>
               </div>
             </form>
@@ -1724,7 +1264,7 @@ function Promo() {
         {/* Promo Code Detail/Edit View */}
         {view === 'detail' && selectedPromoCode && (
           <div className="bg-white shadow-xl rounded-lg overflow-hidden">
-            <div className="px-6 py-4 bg-gradient-to-r from-gray-500 to-gray-600">
+            <div className="px-6 py-4 bg-gradient-to-r from-indigo-500 to-indigo-600">
               <h2 className="text-xl font-semibold text-white">Promo Code Details</h2>
               <p className="text-indigo-100 text-sm mt-1">View and edit promo code information</p>
             </div>
@@ -1746,18 +1286,18 @@ function Promo() {
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {selectedPromoCode.isActive ? ' Active' : '❌ Inactive'}
+                      {selectedPromoCode.isActive ? ' Active' : ' Inactive'}
                     </span>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                       selectedPromoCode.isUsed 
                         ? 'bg-gray-100 text-gray-800' 
-                        : 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {selectedPromoCode.isUsed ? ' Used' : '🔓 Available'}
+                      {selectedPromoCode.isUsed ? 'Used' : ' Available'}
                     </span>
                     {isExpired(selectedPromoCode.expiryDate) && (
                       <span className="px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
-                         Expired
+                        ⏰ Expired
                       </span>
                     )}
                   </div>
@@ -1768,7 +1308,7 @@ function Promo() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="space-y-4">
                   <div className="p-4 border border-gray-200 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2"> Discount Details</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">💰 Discount Details</h4>
                     <div className="space-y-2 text-sm">
                       <p><span className="text-gray-600">Type:</span> <span className="font-medium">{selectedPromoCode.discountType === 'percentage' ? 'Percentage' : 'Fixed Amount'}</span></p>
                       <p><span className="text-gray-600">Value:</span> <span className="font-medium">{selectedPromoCode.discountValue}{selectedPromoCode.discountType === 'percentage' ? '%' : ' Rs.'}</span></p>
@@ -1780,7 +1320,7 @@ function Promo() {
 
                 <div className="space-y-4">
                   <div className="p-4 border border-gray-200 rounded-lg">
-                    <h4 className="font-medium text-gray-900 mb-2">Timeline</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">⏰ Timeline</h4>
                     <div className="space-y-2 text-sm">
                       <p><span className="text-gray-600">Created:</span> <span className="font-medium">{formatDate(selectedPromoCode.createdAt)}</span></p>
                       <p><span className="text-gray-600">Expires:</span> <span className={`font-medium ${isExpired(selectedPromoCode.expiryDate) ? 'text-red-600' : 'text-gray-900'}`}>{formatDate(selectedPromoCode.expiryDate)}</span></p>
@@ -1793,7 +1333,7 @@ function Promo() {
               {/* Usage Details */}
               {selectedPromoCode.isUsed && (
                 <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <h4 className="font-medium text-yellow-800 mb-2"> Usage Details</h4>
+                  <h4 className="font-medium text-yellow-800 mb-2">📊 Usage Details</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <p><span className="text-yellow-700">Used By:</span> <span className="font-medium">{selectedPromoCode.usedBy?.name || 'N/A'}</span></p>
                     <p><span className="text-yellow-700">Email:</span> <span className="font-medium">{selectedPromoCode.usedBy?.email || 'N/A'}</span></p>
@@ -1814,7 +1354,7 @@ function Promo() {
                     className="px-4 py-2 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
                     disabled={loading}
                   >
-                    {loading ? 'Sending...' : '📱 Broadcast to All Users'}
+                    {loading ? 'Sending...' : 'Broadcast to All Users'}
                   </button>
                 </div>
               )}
@@ -1822,16 +1362,20 @@ function Promo() {
               {/* Edit Form */}
               {!selectedPromoCode.isUsed && (
                 <form onSubmit={updatePromoCode} className="border-t pt-6">
-                  <h4 className="text-lg font-medium text-gray-900 mb-4"> Edit Promo Code</h4>
+                  <h4 className="text-lg font-medium text-gray-900 mb-4">✏️ Edit Promo Code</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                       <select
-                        value={selectedPromoCode.isActive.toString()}
-                        onChange={(e) => setSelectedPromoCode({
-                          ...selectedPromoCode,
-                          isActive: e.target.value === 'true'
-                        })}
+                        value={selectedPromoCode.isActive?.toString()}
+                        onChange={(e) => {
+                          const newStatus = e.target.value === 'true';
+                          setSelectedPromoCode({
+                            ...selectedPromoCode,
+                            isActive: newStatus
+                          });
+                          toast.success(`Status changed to ${newStatus ? 'Active' : 'Inactive'}`, { duration: 2000 });
+                        }}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                       >
                         <option value="true">Active</option>
@@ -1890,7 +1434,7 @@ function Promo() {
                       className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
                       disabled={loading}
                     >
-                      {loading ? 'Updating...' : ' Update Promo Code'}
+                      {loading ? 'Updating...' : '✅ Update Promo Code'}
                     </button>
                     <button
                       type="button"
@@ -1898,11 +1442,14 @@ function Promo() {
                       className="px-6 py-2 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 transition-colors"
                       disabled={loading}
                     >
-                       Delete
+                      🗑️ Delete
                     </button>
                     <button
                       type="button"
-                      onClick={() => setView('list')}
+                      onClick={() => {
+                        setView('list');
+                        toast.success('Returned to promo codes list', { duration: 2000 });
+                      }}
                       className="px-6 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
                     >
                       ← Back to List
@@ -1917,7 +1464,10 @@ function Promo() {
                   <div className="flex gap-3">
                     <button
                       type="button"
-                      onClick={() => setView('list')}
+                      onClick={() => {
+                        setView('list');
+                        toast.success('Returned to promo codes list', { duration: 2000 });
+                      }}
                       className="px-6 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
                     >
                       ← Back to List
@@ -1962,10 +1512,13 @@ function Promo() {
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No promo codes found</h3>
                 <p className="text-gray-600 mb-6">Create your first promotional discount code to get started.</p>
                 <button
-                  onClick={() => setView('create')}
-                  className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                  onClick={() => {
+                    setView('create');
+                    toast.success('Ready to create your first promo code!', { duration: 2000 });
+                  }}
+                  className="px-6 py-3 bg-gray-600 text-white font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
                 >
-                  ➕ Create First Promo Code
+                   Create First Promo Code
                 </button>
               </div>
             )}
@@ -2012,7 +1565,7 @@ function Promo() {
                                   ? ' Used'
                                   : isExpired(promoCode.expiryDate)
                                     ? ' Expired'
-                                    : ' Active'
+                                    : 'Active'
                               }
                             </span>
                           </div>
@@ -2041,7 +1594,7 @@ function Promo() {
                             {!promoCode.isUsed && promoCode.isActive && !isExpired(promoCode.expiryDate) && (
                               <button
                                 onClick={() => broadcastExistingCode(promoCode)}
-                                className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                                className="text-blue-600 hover:text-blue-900 font-medium transition-colors"
                                 title="Notify all users about this promo code"
                               >
                                  Broadcast
@@ -2055,7 +1608,7 @@ function Promo() {
                                 className="text-red-600 hover:text-red-900 font-medium transition-colors"
                                 title="Delete promo code"
                               >
-                                Delete
+                                 Delete
                               </button>
                             )}
                           </div>
@@ -2072,7 +1625,10 @@ function Promo() {
               <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 bg-white">
                 <div className="flex-1 flex justify-between sm:hidden">
                   <button
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    onClick={() => {
+                      setCurrentPage(Math.max(1, currentPage - 1));
+                      toast.success(`Page ${Math.max(1, currentPage - 1)}`, { duration: 1500 });
+                    }}
                     disabled={currentPage === 1}
                     className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
                       currentPage === 1 
@@ -2083,7 +1639,10 @@ function Promo() {
                     Previous
                   </button>
                   <button
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    onClick={() => {
+                      setCurrentPage(Math.min(totalPages, currentPage + 1));
+                      toast.success(`Page ${Math.min(totalPages, currentPage + 1)}`, { duration: 1500 });
+                    }}
                     disabled={currentPage === totalPages}
                     className={`ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${
                       currentPage === totalPages 
@@ -2104,7 +1663,10 @@ function Promo() {
                   <div>
                     <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
                       <button
-                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        onClick={() => {
+                          setCurrentPage(Math.max(1, currentPage - 1));
+                          toast.success(`Page ${Math.max(1, currentPage - 1)}`, { duration: 1500 });
+                        }}
                         disabled={currentPage === 1}
                         className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 text-sm font-medium ${
                           currentPage === 1 
@@ -2134,7 +1696,10 @@ function Promo() {
                                   ...
                                 </span>
                                 <button
-                                  onClick={() => setCurrentPage(page)}
+                                  onClick={() => {
+                                    setCurrentPage(page);
+                                    toast.success(`Page ${page}`, { duration: 1500 });
+                                  }}
                                   className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                                     currentPage === page
                                       ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
@@ -2149,7 +1714,10 @@ function Promo() {
                           return (
                             <button
                               key={page}
-                              onClick={() => setCurrentPage(page)}
+                              onClick={() => {
+                                setCurrentPage(page);
+                                toast.success(`Page ${page}`, { duration: 1500 });
+                              }}
                               className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                                 currentPage === page
                                   ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
@@ -2162,7 +1730,10 @@ function Promo() {
                         })}
                       
                       <button
-                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        onClick={() => {
+                          setCurrentPage(Math.min(totalPages, currentPage + 1));
+                          toast.success(`Page ${Math.min(totalPages, currentPage + 1)}`, { duration: 1500 });
+                        }}
                         disabled={currentPage === totalPages}
                         className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 text-sm font-medium ${
                           currentPage === totalPages 
@@ -2190,7 +1761,7 @@ function Promo() {
               <div className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                 
+                    <div className="text-2xl"></div>
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>

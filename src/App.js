@@ -29,7 +29,9 @@ import UserNotification from './user/Pages/UserNotificationPage';
 import AdminOrderHistoryPage from './admin/Pages/Orderdetails';
 import ForgotPasswordPage from './auth/components/Forgetpassword';
 import ResetPasswordPage from './auth/components/Resetpassword';
-import AdminRewardpoints from './admin/Pages/Reward';
+import StaffRewardpoints from './staff/Pages/Reward';
+import AddReward from './staff/components/Rewardpoints/addreward';
+import EditReward from './staff/components/Rewardpoints/editreward';
 
 // =============== Auth Utility Functions ===============
 // Get the current user from localStorage
@@ -262,6 +264,21 @@ function App() {
             <NotificationPage />
           </StaffRoute>
         } />
+          <Route path='/staff-rewardpoints' element={
+          <StaffRoute>
+            < StaffRewardpoints/>
+          </StaffRoute>
+        } />
+        <Route path='/staff-rewardpoints/add-reward' element={
+          <StaffRoute>
+            <AddReward />
+          </StaffRoute>
+        } />
+        <Route path='/staff-rewardpoints/edit-reward/:id' element={
+          <StaffRoute>
+            <EditReward/>
+          </StaffRoute>
+        } />
 
         {/* Protected admin routes */}
         <Route path='/admin-home' element={
@@ -289,11 +306,7 @@ function App() {
             <AdminNotificationPage />
           </AdminRoute>
         } />
-        <Route path='/admin-rewardpoints' element={
-          <AdminRoute>
-            < AdminRewardpoints/>
-          </AdminRoute>
-        } />
+
 
         <Route path='/admin-orderhistory' element={
           <AdminRoute>

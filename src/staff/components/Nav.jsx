@@ -1,7 +1,7 @@
-// SideNav.js - Modified to show real-time notification count from Firebase
+// SideNav.js - Fixed version with proper syntax and structure
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { FaHome, FaListAlt, FaClipboardList, FaUtensils, FaBars, FaTimes, FaSignOutAlt } from 'react-icons/fa';
+import { FaHome, FaListAlt, FaClipboardList, FaUtensils, FaBars, FaTimes, FaSignOutAlt, FaGift } from 'react-icons/fa';
 import { Bell } from 'lucide-react';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -63,12 +63,13 @@ function Nav({ onToggle }) {
 
   const isActive = (path) => location.pathname === path;
   
-  // Modified navItems array to use Bell from lucide-react for notifications
+  // Fixed navItems array with proper structure
   const navItems = [
     { path: '/staff-dashboard', icon: <FaHome className="text-lg" />, label: 'Dashboard' },
     { path: '/staff-orders', icon: <FaClipboardList className="text-lg" />, label: 'Orders' },
     { path: '/staff-category', icon: <FaListAlt className="text-lg" />, label: 'Category' },
     { path: '/staff-menu', icon: <FaUtensils className="text-lg" />, label: 'Menu Management' },
+    { path: '/staff-rewardpoints', icon: <FaGift className="text-lg" />, label: 'Reward Points' },
     // Special case for notifications with badge
     { 
       path: '/staff-notification', 

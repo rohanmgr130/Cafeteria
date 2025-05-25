@@ -160,7 +160,7 @@ const ForgotPasswordPage = () => {
             className={`w-full p-3 rounded-lg text-lg font-semibold transition duration-300 ${
               loading 
                 ? 'bg-gray-400 cursor-not-allowed' 
-                : 'bg-blue-500 hover:bg-blue-600 text-white'
+                : 'bg-green-500 hover:bg-green-600 text-white'
             }`}
             disabled={loading}
           >
