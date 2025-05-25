@@ -39,6 +39,10 @@ const LoginPage = () => {
         localStorage.setItem('token', token);
         localStorage.setItem('email', user.email);
         localStorage.setItem('fullname', user.fullname);
+        const myImage = process.env.REACT_APP_API_BASE_URL +  user.profileImage
+        if(user.profileImage){
+          localStorage.setItem("profileImage", myImage)
+        }
         localStorage.setItem('id', user.id);
         localStorage.setItem('role', user.role);
 
@@ -138,16 +142,19 @@ const LoginPage = () => {
           {error && <div className="text-red-500 text-sm text-center mt-2">{error}</div>}
 
           {/* Links */}
-          <div className="text-center mt-4">
-            <a href="#" className="text-blue-500 text-sm hover:underline">
-              Forgot Password?
-            </a>
-          </div>
-          <div className="text-center mt-2">
-            <a href="/register" className="text-blue-500 text-sm hover:underline">
-              Create an Account
-            </a>
-          </div>
+            <div className="text-center mt-4">
+              <button
+                onClick={() => navigate('/forgot-password')}
+                className="text-blue-500 text-sm hover:underline"
+              >
+                Forgot Password?
+              </button>
+            </div>
+            <div className="text-center mt-2">
+              <a href="/register" className="text-blue-500 text-sm hover:underline">
+                Create an Account
+              </a>
+            </div>
         </div>
       </div>
   );

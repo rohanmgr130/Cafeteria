@@ -27,6 +27,9 @@ import NotificationPage from './staff/Pages/Notificationpage';
 import AdminNotificationPage from './admin/Pages/Notificationpage';
 import UserNotification from './user/Pages/UserNotificationPage';
 import AdminOrderHistoryPage from './admin/Pages/Orderdetails';
+import ForgotPasswordPage from './auth/components/Forgetpassword';
+import ResetPasswordPage from './auth/components/Resetpassword';
+import AdminRewardpoints from './admin/Pages/Reward';
 
 // =============== Auth Utility Functions ===============
 // Get the current user from localStorage
@@ -187,6 +190,8 @@ function App() {
         <Route path='/verifyemail' element={<VerifyEmail />} />
         <Route path='/user-home' element={<Home />} />
         <Route path='/user-menus' element={<MenuPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Protected user routes */}
         <Route path='/user-order-history' element={
@@ -219,6 +224,7 @@ function App() {
             <UserNotification />
           </UserRoute>
         } />
+
 
         {/* Protected staff routes */}
         <Route path='/staff-dashboard' element={
@@ -283,6 +289,12 @@ function App() {
             <AdminNotificationPage />
           </AdminRoute>
         } />
+        <Route path='/admin-rewardpoints' element={
+          <AdminRoute>
+            < AdminRewardpoints/>
+          </AdminRoute>
+        } />
+
         <Route path='/admin-orderhistory' element={
           <AdminRoute>
             <AdminOrderHistoryPage />

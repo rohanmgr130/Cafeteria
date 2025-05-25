@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaHome, FaShoppingCart, FaUsers, FaUserFriends, FaSignOutAlt, FaTicketAlt } from 'react-icons/fa';
+import { FaHome, FaShoppingCart, FaUsers, FaUserFriends, FaSignOutAlt, FaTicketAlt, FaGift } from 'react-icons/fa';
 import { Bell } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
@@ -102,6 +102,15 @@ const Nav = () => {
                 <FaTicketAlt className="text-xl" />
               </div>
               <span className="text-lg font-medium">Promo Codes</span>
+            </div>
+          </Link>
+
+          <Link to="/admin-rewardpoints">
+            <div className={`flex items-center space-x-4 p-3 rounded-md hover:bg-gray-700 transition-all duration-200 ${isActive('/admin-rewardpoints')}`}>
+              <div className="w-8 flex justify-center">
+                <FaGift className="text-xl" />
+              </div>
+              <span className="text-lg font-medium">Reward Points</span>
             </div>
           </Link>
 

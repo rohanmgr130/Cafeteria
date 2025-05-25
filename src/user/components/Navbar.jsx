@@ -6,6 +6,7 @@ import { FiLogOut, FiLogIn } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import { ref, onValue } from 'firebase/database';
 import { database } from '../../services/firebase';
+import { useCartValue } from "../../contexts/CartValueCountProvider";
 
 function Navbar() {
   // State management
@@ -16,6 +17,8 @@ function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [cartItemCount, setCartItemCount] = useState(0);
+
+   const {cartValue, setCartValue} = useCartValue()
   
   // Refs for detecting outside clicks
   const profileRef = useRef(null);
@@ -23,6 +26,8 @@ function Navbar() {
   
   // User data from localStorage with fallbacks
   const fullname = localStorage.getItem("fullname");
+  const profileImage = localStorage.getItem("profileImage") 
+
   const email = localStorage.getItem("email");
   const userId = localStorage.getItem("id");
   
@@ -80,9 +85,15 @@ function Navbar() {
         }
 
         const data = await response.json();
+        // if (data && data.items) {
+        //   setCartItemCount(data.items.length);
+        // } 
         if (data && data.items) {
-          setCartItemCount(data.items.length);
-        } else {
+        const count = data.items.length;
+        setCartItemCount(count);
+        setCartValue(count); // Update context too
+    }
+        else {
           setCartItemCount(0);
         }
       } catch (error) {
@@ -93,11 +104,18 @@ function Navbar() {
 
     fetchCartCount();
 
-    // Setup interval to refresh cart count every 30 seconds
-    const intervalId = setInterval(fetchCartCount, 30000);
+    // // Setup interval to refresh cart count every 30 seconds
+    // const intervalId = setInterval(fetchCartCount, 30000);
     
-    return () => clearInterval(intervalId);
+    // return () => clearInterval(intervalId);
   }, [userId]);
+
+  //  useEffect(()=>{
+  //     const totalItem = Number(cartItemCount) + Number(cartValue)
+  //     setCartItemCount(totalItem)
+  //   },[cartItemCount,cartValue])
+  
+    const displayCount = cartValue > 0 ? cartValue : cartItemCount;
   
   // Handle scroll detection - make navbar consistent
   const handleScroll = () => {
@@ -265,9 +283,9 @@ function Navbar() {
                     className="text-white hover:text-red-500 transition-all duration-300 relative"
                   >
                     <IoCartOutline className="h-6 w-6" />
-                    {cartItemCount > 0 && (
+                    {displayCount > 0 && (
                       <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {cartItemCount > 99 ? '99+' : cartItemCount}
+                        {displayCount > 99 ? '99+' : displayCount}
                       </span>
                     )}
                   </Link>
@@ -279,14 +297,11 @@ function Navbar() {
                       className="flex text-sm rounded-full focus:outline-none"
                       onClick={toggleProfile}
                     >
-                      <img
-                        src="/profile.jpg"
+                      <img src={profileImage ? profileImage : "/profile.jpg"}
+
                         alt="Profile"
                         className="h-8 w-8 rounded-full object-cover border-2 border-white hover:border-red-500 transition-all"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = "https://via.placeholder.com/150?text=Profile";
-                        }}
+                       
                       />
                     </button>
 
@@ -298,14 +313,11 @@ function Navbar() {
                     >
                       <div className="px-4 py-3 border-b border-gray-100">
                         <div className="flex items-center">
-                          <img
-                            src="/profile.jpg"
+                          <img src={profileImage ? profileImage : "/profile.jpg"}
+
                             alt="User"
                             className="w-10 h-10 rounded-full mr-3 border border-gray-200"
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = "https://via.placeholder.com/150?text=Profile";
-                            }}
+                           
                           />
                           <div className="overflow-hidden">
                             <p className="text-sm font-medium text-gray-900 truncate">{fullname}</p>

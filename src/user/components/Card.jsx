@@ -641,6 +641,7 @@ import {
   FaTag,
   FaBan
 } from 'react-icons/fa';
+import { useCartValue } from '../../contexts/CartValueCountProvider';
 
 // Modern Toast implementation (your existing Toast implementation)
 const Toast = {
@@ -852,6 +853,9 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
   
   // Check if the item is available - default to true if not specified
   const isAvailable = item.isAvailable !== false;
+
+    //context provider
+      const {cartValue, setCartValue} = useCartValue()
   
   // Check favorite status on component mount
   useEffect(() => {
@@ -1025,6 +1029,7 @@ const Card = memo(({ item, addToCart, isFavorited = false, toggleFavorite }) => 
         if (typeof addToCart === 'function') {
           addToCart(item);
         }
+        setCartValue(cartValue + 1)
       } else {
         Toast.error(data.message || "Failed to add to cart");
       }

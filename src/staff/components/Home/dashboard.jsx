@@ -19,7 +19,7 @@ import {
   FaPlus,
   FaFilter
 } from "react-icons/fa";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {  Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 // API base URL - replace with your actual API endpoint
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:4000";

@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import Footer from "../components/FooterPart";
 import Navbar from "../components/Navbar";
 import Card from "../components/Card";
+import { useCartValue } from '../../contexts/CartValueCountProvider';
 
 const OurMenu = () => {
   const navigate = useNavigate();
@@ -23,6 +24,12 @@ const OurMenu = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [activeType, setActiveType] = useState("All");
+
+  //context provider
+    const {cartValue, setCartValue} = useCartValue()
+
+    console.log(cartValue, "cvv - o")
+  
 
   // Function to normalize categories (handle both string and array formats)
   const normalizeCategories = (item) => {
@@ -117,6 +124,7 @@ const OurMenu = () => {
 
   // Modified addToCart function to navigate to cart page after adding
   const addToCart = async (item) => {
+   
     try {
       // Make the POST request to the backend
       const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/api/cart/add`, {
@@ -137,6 +145,7 @@ const OurMenu = () => {
   
       // Update the cart state with the response from the backend
       setCart(data.cart);
+      setCartValue(cartValue + 1)
       
       // Show success toast
       toast.success(`${item.title} added to cart!`);
@@ -148,6 +157,11 @@ const OurMenu = () => {
       toast.error("Failed to add item to cart. Please try again.");
     }
   };
+
+
+    console.log(cartValue, "cvv - new")
+
+  
   
   const handleGetAllMenu = async () => {
     try {
