@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Nav from '../Nav';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -18,10 +18,12 @@ function EditMenu() {
   const [existingImage, setExistingImage] = useState('');
   const [imageChanged, setImageChanged] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [errors, setErrors] = useState({});
   const [fetchLoading, setFetchLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [toggleLoading, setToggleLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const navigate = useNavigate();
   const { id } = useParams();
@@ -87,17 +89,64 @@ function EditMenu() {
   };
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    
+    // Handle checkbox inputs separately
+    let newValue = type === 'checkbox' ? checked : value;
+    
+    // Special handling for price field - only allow valid numeric input
+    if (name === 'price' && type !== 'checkbox') {
+      // Allow empty string for clearing
+      if (value === '') {
+        newValue = '';
+      } else {
+        // Only allow numbers and one decimal point
+        const numericRegex = /^\d*\.?\d{0,2}$/;
+        if (!numericRegex.test(value)) {
+          return; // Don't update state if invalid input
+        }
+        newValue = value;
+      }
+    }
     
     setItemData({
       ...itemData,
-      [name]: value
+      [name]: newValue
     });
+
+    // Clear specific field error when user starts typing/selecting
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: ''
+      });
+    }
   };
 
   const handleImageUpload = (e) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Please select a valid image file (JPEG, PNG, GIF, WebP)');
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        toast.error('Image size should be less than 5MB');
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
       setImage(file);
       setImageChanged(true);
 
@@ -106,42 +155,136 @@ function EditMenu() {
         setImagePreview(reader.result);
         toast.success('Image updated successfully');
       };
+      reader.onerror = () => {
+        toast.error('Failed to read image file');
+      };
       reader.readAsDataURL(file);
+
+      // Clear image error if exists
+      if (errors.image) {
+        setErrors({
+          ...errors,
+          image: ''
+        });
+      }
     }
   };
 
   const validateForm = () => {
-    if (!itemData.title) {
-      toast.error('Please enter a dish name');
-      return false;
+    const newErrors = {};
+    
+    // Title validation
+    if (!itemData.title || !itemData.title.trim()) {
+      newErrors.title = 'Dish name is required';
+    } else if (itemData.title.trim().length < 2) {
+      newErrors.title = 'Dish name must be at least 2 characters long';
+    } else if (itemData.title.trim().length > 100) {
+      newErrors.title = 'Dish name cannot exceed 100 characters';
+    } else {
+      const titleValue = itemData.title.trim();
+      // Check for invalid patterns
+      if (/^[-\s]+$/.test(titleValue)) {
+        newErrors.title = 'Dish name cannot contain only dashes and spaces';
+      } else if (/[-]{3,}/.test(titleValue)) {
+        newErrors.title = 'Dish name cannot contain more than 2 consecutive dashes';
+      } else if (/^[^a-zA-Z0-9]/.test(titleValue)) {
+        newErrors.title = 'Dish name must start with a letter or number';
+      } else if (!/^[a-zA-Z0-9][a-zA-Z0-9\s\-'&,.()]*[a-zA-Z0-9)]?$/.test(titleValue)) {
+        newErrors.title = 'Dish name contains invalid characters. Only letters, numbers, spaces, single dash, apostrophe, &, comma, period, and parentheses are allowed';
+      }
     }
-    if (!itemData.price) {
-      toast.error('Please enter a price');
-      return false;
+
+    // Price validation
+    if (!itemData.price || itemData.price.toString().trim() === '') {
+      newErrors.price = 'Price is required';
+    } else {
+      const priceStr = itemData.price.toString().trim();
+      const priceNum = parseFloat(priceStr);
+      
+      // Check if it's a valid number
+      if (isNaN(priceNum) || priceStr === '' || priceStr === '.') {
+        newErrors.price = 'Price must be a valid number';
+      } else if (priceNum <= 0) {
+        newErrors.price = 'Price must be greater than zero';
+      } else if (priceNum > 99999) {
+        newErrors.price = 'Price cannot exceed Rs. 99,999';
+      } else if (!/^\d+(\.\d{1,2})?$/.test(priceStr)) {
+        newErrors.price = 'Price must be a valid number with maximum 2 decimal places';
+      } else if (priceStr.length === 1 && /^[a-zA-Z]$/.test(priceStr)) {
+        newErrors.price = 'Price cannot be a single character';
+      }
     }
+
+    // Type validation
     if (!itemData.type) {
-      toast.error('Please select a food type');
-      return false;
+      newErrors.type = 'Food type is required';
+    } else {
+      const validTypes = ['vegetarian', 'non-vegetarian', 'drinks'];
+      if (!validTypes.includes(itemData.type.toLowerCase())) {
+        newErrors.type = 'Please select a valid food type';
+      }
     }
+
+    // Menu type validation
     if (!itemData.menuType) {
-      toast.error('Please select a menu type');
-      return false;
+      newErrors.menuType = 'Menu type is required';
+    } else {
+      const validMenuTypes = ['normal', 'todays-special', 'best-seller'];
+      if (!validMenuTypes.includes(itemData.menuType)) {
+        newErrors.menuType = 'Please select a valid menu type';
+      }
     }
+
+    // Category validation
     if (!itemData.category) {
-      toast.error('Please select a category');
-      return false;
+      newErrors.category = 'Category is required';
+    } else if (categories.length > 0 && !categories.includes(itemData.category)) {
+      newErrors.category = 'Please select a valid category';
     }
+
+    // Image validation - only check if no existing image and no new image
     if (!imagePreview && !existingImage) {
-      toast.error('Please upload an image');
-      return false;
+      newErrors.image = 'Image is required';
+    } else if (image instanceof File) {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(image.type)) {
+        newErrors.image = 'Please select a valid image file (JPEG, PNG, GIF, WebP)';
+      } else if (image.size > 5 * 1024 * 1024) {
+        newErrors.image = 'Image size should be less than 5MB';
+      }
     }
-    return true;
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
       
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      const errorFields = Object.keys(errors)
+        .map(field => {
+          const fieldNames = {
+            title: 'Dish Name',
+            price: 'Price',
+            type: 'Food Type',
+            menuType: 'Menu Type',
+            category: 'Category',
+            image: 'Image'
+          };
+          return fieldNames[field] || field.charAt(0).toUpperCase() + field.slice(1);
+        })
+        .join(', ');
+      
+      toast.error(`Please fix the following errors: ${errorFields}`);
+      
+      // Scroll to first error
+      const firstErrorField = document.querySelector('.error-message');
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
   
     setSubmitLoading(true);
     const loadingToast = toast.loading('Updating menu item...');
@@ -149,8 +292,8 @@ function EditMenu() {
     try {
       const formData = new FormData();
       formData.append('title', itemData.title.trim());
-      formData.append('price', itemData.price);
-      formData.append('type', itemData.type);
+      formData.append('price', parseFloat(itemData.price).toFixed(2));
+      formData.append('type', itemData.type.toLowerCase());
       formData.append('menuType', itemData.menuType);
       formData.append('isAvailable', itemData.isAvailable);
       
@@ -187,7 +330,15 @@ function EditMenu() {
       setTimeout(() => navigate(-1), 1000);
     } catch (error) {
       console.error('Error updating menu item:', error);
-      toast.error(`Failed to update menu item: ${error.message}`);
+      let errorMessage = 'An unexpected error occurred';
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(`Error: ${errorMessage}`);
     } finally {
       setSubmitLoading(false);
       toast.dismiss(loadingToast);
@@ -238,6 +389,16 @@ function EditMenu() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const clearImage = () => {
+    setImage(null);
+    setImagePreview(null);
+    setImageChanged(true);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    toast.success('Image removed');
   };
 
   const itemTypes = ['Vegetarian', 'Non-vegetarian', 'Drinks'];
@@ -300,6 +461,7 @@ function EditMenu() {
               </div>
               
               <button
+                type="button"
                 onClick={handleToggleAvailability}
                 disabled={toggleLoading}
                 className={`px-4 py-2 rounded-md text-white font-medium ${
@@ -325,54 +487,78 @@ function EditMenu() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow-md">
+          <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow-md" noValidate>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dish Name*</label>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                  Dish Name*
+                </label>
                 <input
+                  id="title"
                   type="text"
                   name="title"
                   value={itemData.title}
                   onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
-                  placeholder="Enter dish name"
+                  placeholder="Enter dish name (2-100 characters)"
+                  maxLength="100"
+                  className={`w-full p-2 border ${errors.title ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                 />
+                {errors.title && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.title}</p>
+                )}
+                <p className="text-gray-400 text-xs mt-1">{itemData.title.length}/100 characters</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Price (Rs)*</label>
+                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+                  Price (Rs)*
+                </label>
                 <input
-                  type="number"
+                  id="price"
+                  type="text"
                   name="price"
                   value={itemData.price}
                   onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
-                  placeholder="Enter price"
+                  placeholder="Enter price (e.g., 150.50)"
+                  inputMode="decimal"
+                  className={`w-full p-2 border ${errors.price ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                 />
+                {errors.price && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.price}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Food Type*</label>
+                <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
+                  Food Type*
+                </label>
                 <select
+                  id="type"
                   name="type"
                   value={itemData.type}
                   onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                  className={`w-full p-2 border ${errors.type ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                 >
                   <option value="" disabled>Select a type</option>
                   {itemTypes.map((type, index) => (
                     <option key={index} value={type.toLowerCase()}>{type}</option>
                   ))}
                 </select>
+                {errors.type && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.type}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Menu Type*</label>
+                <label htmlFor="menuType" className="block text-sm font-medium text-gray-700 mb-1">
+                  Menu Type*
+                </label>
                 <select
+                  id="menuType"
                   name="menuType"
                   value={itemData.menuType}
                   onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                  className={`w-full p-2 border ${errors.menuType ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                 >
                   <option value="" disabled>Select a type</option>
                   {menuTypes.map((type, index) => (
@@ -381,15 +567,21 @@ function EditMenu() {
                     </option>
                   ))}
                 </select>
+                {errors.menuType && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.menuType}</p>
+                )}
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category*</label>
+                <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+                  Category*
+                </label>
                 <select
+                  id="category"
                   name="category"
                   value={itemData.category}
                   onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                  className={`w-full p-2 border ${errors.category ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                   disabled={fetchLoading}
                 >
                   <option value="" disabled>Select a category</option>
@@ -399,19 +591,26 @@ function EditMenu() {
                     </option>
                   ))}
                 </select>
+                {errors.category && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.category}</p>
+                )}
                 {fetchLoading && (
                   <p className="text-xs text-gray-500 mt-1">Loading categories...</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Food Image*</label>
+                <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
+                  Food Image*
+                </label>
                 <div className="flex items-center space-x-4">
                   <label className="bg-gray-700 text-white px-3 py-2 rounded-md cursor-pointer hover:bg-gray-800 transition-colors duration-200">
                     Upload Image
                     <input
+                      ref={fileInputRef}
+                      id="image"
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                       onChange={handleImageUpload}
                       className="hidden"
                     />
@@ -422,18 +621,19 @@ function EditMenu() {
                       <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
                       <button
                         type="button"
-                        onClick={() => {
-                          setImage(null);
-                          setImagePreview(null);
-                          if (existingImage) setImageChanged(true);
-                        }}
+                        onClick={clearImage}
                         className="absolute top-0 right-0 bg-gray-800 text-white rounded-full h-5 w-5 text-xs flex items-center justify-center hover:bg-red-600 transition-colors duration-200"
+                        title="Remove image"
                       >
                         ×
                       </button>
                     </div>
                   )}
                 </div>
+                <p className="text-gray-400 text-xs mt-1">Accepted formats: JPEG, PNG, GIF, WebP (Max: 5MB)</p>
+                {errors.image && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.image}</p>
+                )}
               </div>
               
               {/* Preview larger image */}
@@ -462,7 +662,7 @@ function EditMenu() {
               <button
                 type="submit"
                 disabled={submitLoading}
-                className={`w-full ${submitLoading ? 'bg-gray-500' : 'bg-gray-800 hover:bg-gray-700'} text-white py-3 px-4 rounded-md flex justify-center items-center transition-colors duration-200`}
+                className={`w-full ${submitLoading ? 'bg-gray-500 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700'} text-white py-3 px-4 rounded-md flex justify-center items-center transition-colors duration-200 font-medium`}
               >
                 {submitLoading ? (
                   <>

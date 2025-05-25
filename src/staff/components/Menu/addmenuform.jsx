@@ -1,380 +1,3 @@
-
-// import React, { useState, useRef, useEffect, useCallback } from 'react';
-// import Nav from '../Nav';
-// import { useNavigate } from 'react-router-dom';
-// import { toast } from 'react-hot-toast';
-// import axios from 'axios';
-
-// function CreateItem() {
-//   const [itemData, setItemData] = useState({
-//     title: '',
-//     price: '',
-//     type: '',
-//     menuType: '',
-//     category: '',
-//     image: ''
-//   });
-
-//   const [errors, setErrors] = useState({});
-//   const [imagePreview, setImagePreview] = useState(null);
-//   const [categories, setCategories] = useState([]);
-//   const [fetchLoading, setFetchLoading] = useState(false);
-//   const [submitLoading, setSubmitLoading] = useState(false);
-//   const fileInputRef = useRef(null);
-//   const navigate = useNavigate();
-
-//   const API_BASE_URL = process.env.REACT_APP_API_BASE_URL
-
-//   // Fetch categories with error handling and retry
-//   const fetchCategories = useCallback(async (retry = true) => {
-//     setFetchLoading(true);
-//     try {
-//       const res = await axios.get(`${API_BASE_URL}/api/category/get-all-category`);
-//       const categoriesData = res.data.categories || [];
-//       // Extract only category names for the dropdown
-//       setCategories(categoriesData.map(category => 
-//         typeof category === 'string' ? category : category.name
-//       ));
-//     } catch (err) {
-//       console.error("Failed to load categories", err);
-//       toast.error("Failed to load categories");
-      
-//       // Auto retry once after 2 seconds in case of network error
-//       if (retry) {
-//         setTimeout(() => fetchCategories(false), 2000);
-//       }
-//     } finally {
-//       setFetchLoading(false);
-//     }
-//   }, [API_BASE_URL]);
-
-//   useEffect(() => {
-//     fetchCategories();
-//   }, [fetchCategories]);
-
-//   const handleChange = (e) => {
-//     const { name, value } = e.target;
-//     setItemData({
-//       ...itemData,
-//       [name]: value
-//     });
-
-//     if (errors[name]) {
-//       setErrors({
-//         ...errors,
-//         [name]: ''
-//       });
-//     }
-//   };
-
-//   const handleImageUpload = (e) => {
-//     const file = e.target.files[0];
-//     if (file) {
-//       const reader = new FileReader();
-//       reader.onload = () => {
-//         setImagePreview(reader.result);
-//         toast.success('Image uploaded successfully');
-//       };
-//       reader.readAsDataURL(file);
-
-//       setItemData({
-//         ...itemData,
-//         image: file
-//       });
-
-//       if (errors.image) {
-//         setErrors({
-//           ...errors,
-//           image: ''
-//         });
-//       }
-//     }
-//   };
-
-//   const clearImage = () => {
-//     setImagePreview(null);
-//     setItemData({
-//       ...itemData,
-//       image: ''
-//     });
-//     if (fileInputRef.current) {
-//       fileInputRef.current.value = "";
-//     }
-//     toast.success('Image removed');
-//   };
-
-//   const validateForm = () => {
-//     const newErrors = {};
-//     if (!itemData.title.trim()) newErrors.title = 'Dish name is required';
-//     if (!itemData.price) newErrors.price = 'Price is required';
-//     else if (parseFloat(itemData.price) <= 0) newErrors.price = 'Price must be greater than zero';
-//     if (!itemData.type) newErrors.type = 'Food type is required';
-//     if (!itemData.menuType) newErrors.menuType = 'Menu type is required';
-//     if (!itemData.category) newErrors.category = 'Category is required';
-//     if (!itemData.image) newErrors.image = 'Image is required';
-
-//     setErrors(newErrors);
-//     return Object.keys(newErrors).length === 0;
-//   };
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     if (!validateForm()) {
-//       const errorFields = Object.keys(errors)
-//         .map(field => field.charAt(0).toUpperCase() + field.slice(1))
-//         .join(', ');
-//       toast.error(`Please complete required fields: ${errorFields}`);
-//       const firstErrorField = document.querySelector('.error-message');
-//       if (firstErrorField) {
-//         firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-//       }
-//       return;
-//     }
-
-//     setSubmitLoading(true);
-//     const loadingToast = toast.loading('Adding menu item...');
-
-//     try {
-//       const formData = new FormData();
-//       formData.append('title', itemData.title.trim());
-//       formData.append('price', itemData.price);
-//       formData.append('type', itemData.type);
-//       formData.append('menuType', itemData.menuType);
-      
-//       // Fix: Changed 'category' to 'categories' to match backend naming
-//       // Make sure itemData.category is never undefined
-//       if (itemData.category) {
-//         formData.append('categories', itemData.category);
-//       } else {
-//         formData.append('categories', ''); // Default empty string if no category selected
-//       }
-      
-//       formData.append('image', itemData.image);
-
-//       // Make sure the URL path is correct - including /api prefix
-//       const response = await fetch(`${API_BASE_URL}/api/staff/add-menu-items`, {
-//         method: 'POST',
-//         body: formData
-//       });
-
-//       toast.dismiss(loadingToast);
-
-//       if (response.ok) {
-//         toast.success(`${itemData.title} added successfully to the menu!`, {
-//           icon: '✅',
-//           duration: 4000
-//         });
-//         setTimeout(() => navigate('/staff-menu'), 1000);
-//       } else {
-//         const errorData = await response.json();
-//         toast.error(`Failed to add menu item: ${errorData.message || 'Unknown error'}`);
-//       }
-//     } catch (error) {
-//       console.error('Error adding menu item:', error);
-//       toast.error(`An error occurred: ${error.message || 'Unknown error'}`);
-//       toast.dismiss(loadingToast);
-//     } finally {
-//       setSubmitLoading(false);
-//     }
-//   };
-
-//   const itemTypes = ['Vegetarian', 'Non-vegetarian' , 'Drinks'];
-//   const menuTypes = ['normal', 'todays-special'];
-
-//   return (
-//     <div className="flex min-h-screen bg-gray-50">
-//       <div className="fixed left-0 top-0 h-full">
-//         <Nav />
-//       </div>
-
-//       <div className="flex-1 ml-16 md:ml-64 p-4">
-//         <div className="max-w-3xl mx-auto">
-//           <div className="p-4">
-//             <button
-//               onClick={() => navigate(-1)}
-//               className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 mb-4"
-//             >
-//               Back
-//             </button>
-//             <h1 className="text-2xl font-bold text-gray-800 mb-6">Add New Menu Item</h1>
-//           </div>
-
-//           <form onSubmit={handleSubmit} className="space-y-4">
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//               <div>
-//                 <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-//                   Dish Name*
-//                 </label>
-//                 <input
-//                   id="title"
-//                   type="text"
-//                   name="title"
-//                   value={itemData.title}
-//                   onChange={handleChange}
-//                   placeholder="Enter dish name"
-//                   className={`w-full p-2 border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-//                 />
-//                 {errors.title && (
-//                   <p className="text-red-500 text-xs mt-1 error-message">{errors.title}</p>
-//                 )}
-//               </div>
-
-//               <div>
-//                 <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
-//                   Price (Rs)*
-//                 </label>
-//                 <input
-//                   id="price"
-//                   type="number"
-//                   name="price"
-//                   value={itemData.price}
-//                   onChange={handleChange}
-//                   placeholder="Enter price"
-//                   className={`w-full p-2 border ${errors.price ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-//                 />
-//                 {errors.price && (
-//                   <p className="text-red-500 text-xs mt-1 error-message">{errors.price}</p>
-//                 )}
-//               </div>
-
-//               <div>
-//                 <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
-//                   Food Type*
-//                 </label>
-//                 <select
-//                   id="type"
-//                   name="type"
-//                   value={itemData.type}
-//                   onChange={handleChange}
-//                   className={`w-full p-2 border ${errors.type ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-//                 >
-//                   <option value="" disabled>Select a type</option>
-//                   {itemTypes.map((type, index) => (
-//                     <option key={index} value={type.toLowerCase()}>{type}</option>
-//                   ))}
-//                 </select>
-//                 {errors.type && (
-//                   <p className="text-red-500 text-xs mt-1 error-message">{errors.type}</p>
-//                 )}
-//               </div>
-
-//               <div>
-//                 <label htmlFor="menuType" className="block text-sm font-medium text-gray-700 mb-1">
-//                   Menu Type*
-//                 </label>
-//                 <select
-//                   id="menuType"
-//                   name="menuType"
-//                   value={itemData.menuType}
-//                   onChange={handleChange}
-//                   className={`w-full p-2 border ${errors.menuType ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-//                 >
-//                   <option value="" disabled>Select a type</option>
-//                   {menuTypes.map((menuType, index) => (
-//                     <option key={index} value={menuType}>
-//                       {menuType === 'normal' ? 'Normal' : 'Today\'s Special'}
-//                     </option>
-//                   ))}
-//                 </select>
-//                 {errors.menuType && (
-//                   <p className="text-red-500 text-xs mt-1 error-message">{errors.menuType}</p>
-//                 )}
-//               </div>
-              
-//               <div>
-//                 <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-//                   Category*
-//                 </label>
-//                 <select
-//                   id="category"
-//                   name="category"
-//                   value={itemData.category}
-//                   onChange={handleChange}
-//                   className={`w-full p-2 border ${errors.category ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-//                   disabled={fetchLoading}
-//                 >
-//                   <option value="" disabled>Select a category</option>
-//                   {categories.map((category, index) => (
-//                     <option key={index} value={category}>
-//                       {category}
-//                     </option>
-//                   ))}
-//                 </select>
-//                 {errors.category && (
-//                   <p className="text-red-500 text-xs mt-1 error-message">{errors.category}</p>
-//                 )}
-//                 {fetchLoading && (
-//                   <p className="text-gray-500 text-xs mt-1">Loading categories...</p>
-//                 )}
-//               </div>
-
-//               <div className="md:col-span-2">
-//                 <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
-//                   Item Image*
-//                 </label>
-//                 <div className="flex flex-col space-y-2">
-//                   <input
-//                     ref={fileInputRef}
-//                     id="image"
-//                     type="file"
-//                     accept="image/*"
-//                     onChange={handleImageUpload}
-//                     className={`w-full p-2 border ${errors.image ? 'border-red-500' : 'border-gray-300'} rounded-md`}
-//                   />
-//                   {errors.image && (
-//                     <p className="text-red-500 text-xs mt-1 error-message">{errors.image}</p>
-//                   )}
-
-//                   {imagePreview && (
-//                     <div className="mt-2">
-//                       <div className="relative w-full h-48 bg-gray-100 rounded-md overflow-hidden">
-//                         <img
-//                           src={imagePreview}
-//                           alt="Item preview"
-//                           className="w-full h-full object-contain"
-//                         />
-//                         <button
-//                           type="button"
-//                           onClick={clearImage}
-//                           className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-//                         >
-//                           ×
-//                         </button>
-//                       </div>
-//                     </div>
-//                   )}
-//                 </div>
-//               </div>
-//             </div>
-
-//             <div className="pt-4">
-//               <button
-//                 type="submit"
-//                 disabled={submitLoading}
-//                 className={`w-full ${submitLoading ? 'bg-gray-500' : 'bg-gray-800 hover:bg-gray-700'} text-white py-3 px-4 rounded-md flex justify-center items-center transition-colors duration-200`}
-//               >
-//                 {submitLoading ? (
-//                   <>
-//                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-//                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-//                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-//                     </svg>
-//                     ADDING MENU ITEM...
-//                   </>
-//                 ) : 'ADD MENU ITEM'}
-//               </button>
-//             </div>
-//           </form>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// export default CreateItem;
-
-
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Nav from '../Nav';
 import { useNavigate } from 'react-router-dom';
@@ -433,13 +56,29 @@ function CreateItem() {
     const { name, value, type, checked } = e.target;
     
     // Handle checkbox inputs separately
-    const newValue = type === 'checkbox' ? checked : value;
+    let newValue = type === 'checkbox' ? checked : value;
+    
+    // Special handling for price field - only allow valid numeric input
+    if (name === 'price' && type !== 'checkbox') {
+      // Allow empty string for clearing
+      if (value === '') {
+        newValue = '';
+      } else {
+        // Only allow numbers and one decimal point
+        const numericRegex = /^\d*\.?\d{0,2}$/;
+        if (!numericRegex.test(value)) {
+          return; // Don't update state if invalid input
+        }
+        newValue = value;
+      }
+    }
     
     setItemData({
       ...itemData,
       [name]: newValue
     });
 
+    // Clear specific field error when user starts typing/selecting
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -451,10 +90,33 @@ function CreateItem() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Please select a valid image file (JPEG, PNG, GIF, WebP)');
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+      if (file.size > maxSize) {
+        toast.error('Image size should be less than 5MB');
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = () => {
         setImagePreview(reader.result);
         toast.success('Image uploaded successfully');
+      };
+      reader.onerror = () => {
+        toast.error('Failed to read image file');
       };
       reader.readAsDataURL(file);
 
@@ -486,13 +148,87 @@ function CreateItem() {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!itemData.title.trim()) newErrors.title = 'Dish name is required';
-    if (!itemData.price) newErrors.price = 'Price is required';
-    else if (parseFloat(itemData.price) <= 0) newErrors.price = 'Price must be greater than zero';
-    if (!itemData.type) newErrors.type = 'Food type is required';
-    if (!itemData.menuType) newErrors.menuType = 'Menu type is required';
-    if (!itemData.category) newErrors.category = 'Category is required';
-    if (!itemData.image) newErrors.image = 'Image is required';
+    
+    // Title validation
+    if (!itemData.title || !itemData.title.trim()) {
+      newErrors.title = 'Dish name is required';
+    } else if (itemData.title.trim().length < 2) {
+      newErrors.title = 'Dish name must be at least 2 characters long';
+    } else if (itemData.title.trim().length > 100) {
+      newErrors.title = 'Dish name cannot exceed 100 characters';
+    } else {
+      const titleValue = itemData.title.trim();
+      // Check for invalid patterns
+      if (/^[-\s]+$/.test(titleValue)) {
+        newErrors.title = 'Dish name cannot contain only dashes and spaces';
+      } else if (/[-]{3,}/.test(titleValue)) {
+        newErrors.title = 'Dish name cannot contain more than 2 consecutive dashes';
+      } else if (/^[^a-zA-Z0-9]/.test(titleValue)) {
+        newErrors.title = 'Dish name must start with a letter or number';
+      } else if (!/^[a-zA-Z0-9][a-zA-Z0-9\s\-'&,.()]*[a-zA-Z0-9)]?$/.test(titleValue)) {
+        newErrors.title = 'Dish name contains invalid characters. Only letters, numbers, spaces, single dash, apostrophe, &, comma, period, and parentheses are allowed';
+      }
+    }
+
+    // Price validation
+    if (!itemData.price || itemData.price.trim() === '') {
+      newErrors.price = 'Price is required';
+    } else {
+      const priceStr = itemData.price.toString().trim();
+      const priceNum = parseFloat(priceStr);
+      
+      // Check if it's a valid number
+      if (isNaN(priceNum) || priceStr === '' || priceStr === '.') {
+        newErrors.price = 'Price must be a valid number';
+      } else if (priceNum <= 0) {
+        newErrors.price = 'Price must be greater than zero';
+      } else if (priceNum > 99999) {
+        newErrors.price = 'Price cannot exceed Rs. 99,999';
+      } else if (!/^\d+(\.\d{1,2})?$/.test(priceStr)) {
+        newErrors.price = 'Price must be a valid number with maximum 2 decimal places';
+      } else if (priceStr.length === 1 && /^[a-zA-Z]$/.test(priceStr)) {
+        newErrors.price = 'Price cannot be a single character';
+      }
+    }
+
+    // Type validation
+    if (!itemData.type) {
+      newErrors.type = 'Food type is required';
+    } else {
+      const validTypes = ['vegetarian', 'non-vegetarian', 'drinks'];
+      if (!validTypes.includes(itemData.type.toLowerCase())) {
+        newErrors.type = 'Please select a valid food type';
+      }
+    }
+
+    // Menu type validation
+    if (!itemData.menuType) {
+      newErrors.menuType = 'Menu type is required';
+    } else {
+      const validMenuTypes = ['normal', 'todays-special'];
+      if (!validMenuTypes.includes(itemData.menuType)) {
+        newErrors.menuType = 'Please select a valid menu type';
+      }
+    }
+
+    // Category validation
+    if (!itemData.category) {
+      newErrors.category = 'Category is required';
+    } else if (categories.length > 0 && !categories.includes(itemData.category)) {
+      newErrors.category = 'Please select a valid category';
+    }
+
+    // Image validation
+    if (!itemData.image) {
+      newErrors.image = 'Image is required';
+    } else if (itemData.image instanceof File) {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(itemData.image.type)) {
+        newErrors.image = 'Please select a valid image file (JPEG, PNG, GIF, WebP)';
+      } else if (itemData.image.size > 5 * 1024 * 1024) {
+        newErrors.image = 'Image size should be less than 5MB';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -500,11 +236,25 @@ function CreateItem() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!validateForm()) {
       const errorFields = Object.keys(errors)
-        .map(field => field.charAt(0).toUpperCase() + field.slice(1))
+        .map(field => {
+          const fieldNames = {
+            title: 'Dish Name',
+            price: 'Price',
+            type: 'Food Type',
+            menuType: 'Menu Type',
+            category: 'Category',
+            image: 'Image'
+          };
+          return fieldNames[field] || field.charAt(0).toUpperCase() + field.slice(1);
+        })
         .join(', ');
-      toast.error(`Please complete required fields: ${errorFields}`);
+      
+      toast.error(`Please fix the following errors: ${errorFields}`);
+      
+      // Scroll to first error
       const firstErrorField = document.querySelector('.error-message');
       if (firstErrorField) {
         firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -518,8 +268,8 @@ function CreateItem() {
     try {
       const formData = new FormData();
       formData.append('title', itemData.title.trim());
-      formData.append('price', itemData.price);
-      formData.append('type', itemData.type);
+      formData.append('price', parseFloat(itemData.price).toFixed(2));
+      formData.append('type', itemData.type.toLowerCase());
       formData.append('menuType', itemData.menuType);
       
       // Fix: Changed 'category' to 'categories' to match backend naming
@@ -536,31 +286,58 @@ function CreateItem() {
       // Make sure the URL path is correct - including /api prefix
       const response = await fetch(`${API_BASE_URL}/api/staff/add-menu-items`, {
         method: 'POST',
-        body: formData
+        body: formData,
+        // Don't set Content-Type header when using FormData, let browser set it
       });
 
       toast.dismiss(loadingToast);
 
       if (response.ok) {
-        toast.success(`${itemData.title} added successfully to the menu!`, {
+        const responseData = await response.json();
+        toast.success(`${itemData.title.trim()} added successfully to the menu!`, {
           icon: '✅',
           duration: 4000
         });
+        
+        // Reset form
+        setItemData({
+          title: '',
+          price: '',
+          type: '',
+          menuType: '',
+          category: '',
+          image: '',
+          isAvailable: true
+        });
+        setImagePreview(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        
         setTimeout(() => navigate('/staff-menu'), 1000);
       } else {
         const errorData = await response.json();
-        toast.error(`Failed to add menu item: ${errorData.message || 'Unknown error'}`);
+        const errorMessage = errorData.message || errorData.error || 'Unknown error occurred';
+        toast.error(`Failed to add menu item: ${errorMessage}`);
       }
     } catch (error) {
       console.error('Error adding menu item:', error);
-      toast.error(`An error occurred: ${error.message || 'Unknown error'}`);
+      let errorMessage = 'An unexpected error occurred';
+      
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(`Error: ${errorMessage}`);
       toast.dismiss(loadingToast);
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  const itemTypes = ['Vegetarian', 'Non-vegetarian' , 'Drinks'];
+  const itemTypes = ['Vegetarian', 'Non-vegetarian', 'Drinks'];
   const menuTypes = ['normal', 'todays-special'];
 
   return (
@@ -574,7 +351,7 @@ function CreateItem() {
           <div className="p-4">
             <button
               onClick={() => navigate(-1)}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 mb-4"
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 mb-4 transition-colors duration-200"
             >
               Back
             </button>
@@ -592,6 +369,7 @@ function CreateItem() {
               </div>
               
               <button
+                type="button"
                 onClick={() => setItemData({ ...itemData, isAvailable: !itemData.isAvailable })}
                 className={`px-4 py-2 rounded-md text-white font-medium ${
                   itemData.isAvailable 
@@ -604,7 +382,7 @@ function CreateItem() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow-md">
+          <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow-md" noValidate>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
@@ -616,12 +394,14 @@ function CreateItem() {
                   name="title"
                   value={itemData.title}
                   onChange={handleChange}
-                  placeholder="Enter dish name"
-                  className={`w-full p-2 border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                  placeholder="Enter dish name (2-100 characters)"
+                  maxLength="100"
+                  className={`w-full p-2 border ${errors.title ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                 />
                 {errors.title && (
                   <p className="text-red-500 text-xs mt-1 error-message">{errors.title}</p>
                 )}
+                <p className="text-gray-400 text-xs mt-1">{itemData.title.length}/100 characters</p>
               </div>
 
               <div>
@@ -630,12 +410,13 @@ function CreateItem() {
                 </label>
                 <input
                   id="price"
-                  type="number"
+                  type="text"
                   name="price"
                   value={itemData.price}
                   onChange={handleChange}
-                  placeholder="Enter price"
-                  className={`w-full p-2 border ${errors.price ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                  placeholder="Enter price (e.g., 150.50)"
+                  inputMode="decimal"
+                  className={`w-full p-2 border ${errors.price ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                 />
                 {errors.price && (
                   <p className="text-red-500 text-xs mt-1 error-message">{errors.price}</p>
@@ -651,7 +432,7 @@ function CreateItem() {
                   name="type"
                   value={itemData.type}
                   onChange={handleChange}
-                  className={`w-full p-2 border ${errors.type ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                  className={`w-full p-2 border ${errors.type ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                 >
                   <option value="" disabled>Select a type</option>
                   {itemTypes.map((type, index) => (
@@ -672,7 +453,7 @@ function CreateItem() {
                   name="menuType"
                   value={itemData.menuType}
                   onChange={handleChange}
-                  className={`w-full p-2 border ${errors.menuType ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                  className={`w-full p-2 border ${errors.menuType ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                 >
                   <option value="" disabled>Select a type</option>
                   {menuTypes.map((menuType, index) => (
@@ -695,7 +476,7 @@ function CreateItem() {
                   name="category"
                   value={itemData.category}
                   onChange={handleChange}
-                  className={`w-full p-2 border ${errors.category ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                  className={`w-full p-2 border ${errors.category ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                   disabled={fetchLoading}
                 >
                   <option value="" disabled>Select a category</option>
@@ -722,10 +503,11 @@ function CreateItem() {
                     ref={fileInputRef}
                     id="image"
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
                     onChange={handleImageUpload}
-                    className={`w-full p-2 border ${errors.image ? 'border-red-500' : 'border-gray-300'} rounded-md`}
+                    className={`w-full p-2 border ${errors.image ? 'border-red-500 focus:border-red-500' : 'border-gray-300 focus:border-blue-500'} rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                   />
+                  <p className="text-gray-400 text-xs">Accepted formats: JPEG, PNG, GIF, WebP (Max: 5MB)</p>
                   {errors.image && (
                     <p className="text-red-500 text-xs mt-1 error-message">{errors.image}</p>
                   )}
@@ -741,7 +523,8 @@ function CreateItem() {
                         <button
                           type="button"
                           onClick={clearImage}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors duration-200"
+                          title="Remove image"
                         >
                           ×
                         </button>
@@ -763,7 +546,7 @@ function CreateItem() {
               <button
                 type="submit"
                 disabled={submitLoading}
-                className={`w-full ${submitLoading ? 'bg-gray-500' : 'bg-gray-800 hover:bg-gray-700'} text-white py-3 px-4 rounded-md flex justify-center items-center transition-colors duration-200`}
+                className={`w-full ${submitLoading ? 'bg-gray-500 cursor-not-allowed' : 'bg-gray-800 hover:bg-gray-700'} text-white py-3 px-4 rounded-md flex justify-center items-center transition-colors duration-200 font-medium`}
               >
                 {submitLoading ? (
                   <>

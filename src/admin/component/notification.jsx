@@ -1,8 +1,8 @@
-
 import { useEffect, useState } from 'react';
 import { ref, onValue, remove } from 'firebase/database';
 import { database } from '../../services/firebase'; // Make sure this path is correct for your project
 import { AlertCircle, Bell, Clock, Trash2, X } from 'lucide-react';
+import toast, { Toaster } from 'react-hot-toast';
 
 const Notification = () => {
   const [notifications, setNotifications] = useState([]);
@@ -38,9 +38,11 @@ const Notification = () => {
           setNotifications([]);
           setNotificationCount(0);
         }
+        setError(null); // Clear any previous errors
       } catch (err) {
         console.error('Error processing notifications:', err);
         setError('Failed to load notifications');
+        toast.error('Failed to load notifications');
       } finally {
         setLoading(false);
       }
@@ -48,6 +50,7 @@ const Notification = () => {
       console.error('Error fetching notifications:', err);
       setError('Failed to connect to notification service');
       setLoading(false);
+      toast.error('Failed to connect to notification service');
     });
     
     // Clean up the listener when component unmounts
@@ -57,25 +60,80 @@ const Notification = () => {
   // Function to delete a notification
   const handleDelete = async (id) => {
     try {
+      // Show loading toast
+      const loadingToast = toast.loading('Deleting notification...');
+      
       await remove(ref(database, `notifications/${role}/${id}`));
+      
+      // Dismiss loading toast and show success
+      toast.dismiss(loadingToast);
+      toast.success('Notification deleted successfully');
+      
       // The UI will update automatically thanks to the onValue listener
     } catch (err) {
       console.error('Error deleting notification:', err);
+      toast.error('Failed to delete notification');
     }
   };
   
-  // Function to clear all notifications
-  const handleClearAll = async () => {
+  // Function to clear all notifications with toast confirmation
+  const handleClearAll = () => {
+    toast((t) => (
+      <div className="flex flex-col">
+        <div className="flex items-center mb-3">
+          <AlertCircle className="h-5 w-5 text-amber-500 mr-2" />
+          <span className="font-medium">Clear All Notifications</span>
+        </div>
+        <p className="text-sm text-gray-600 mb-4">
+          Are you sure you want to clear all notifications? This action cannot be undone.
+        </p>
+        <div className="flex gap-2 justify-end">
+          <button
+            className="px-3 py-1 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+            onClick={() => toast.dismiss(t.id)}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            onClick={async () => {
+              toast.dismiss(t.id);
+              await confirmClearAll();
+            }}
+          >
+            Clear All
+          </button>
+        </div>
+      </div>
+    ), {
+      duration: Infinity,
+      style: {
+        background: 'white',
+        color: 'black',
+        padding: '16px',
+        minWidth: '300px',
+      },
+    });
+  };
+
+  // Actual function to clear notifications
+  const confirmClearAll = async () => {
     try {
-      const confirmClear = window.confirm('Are you sure you want to clear all notifications?');
-      if (!confirmClear) return;
+      // Show loading toast
+      const loadingToast = toast.loading('Clearing all notifications...');
       
       // Delete each notification one by one
       for (const notification of notifications) {
         await remove(ref(database, `notifications/${role}/${notification.id}`));
       }
+      
+      // Dismiss loading toast and show success
+      toast.dismiss(loadingToast);
+      toast.success('All notifications cleared successfully');
+      
     } catch (err) {
       console.error('Error clearing notifications:', err);
+      toast.error('Failed to clear all notifications');
     }
   };
   
@@ -101,6 +159,35 @@ const Notification = () => {
   // Since this is a dedicated page (not a sidebar), let's adjust the layout
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
+      {/* Toast Container */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            style: {
+              background: '#10b981',
+            },
+          },
+          error: {
+            duration: 5000,
+            style: {
+              background: '#ef4444',
+            },
+          },
+          loading: {
+            style: {
+              background: '#3b82f6',
+            },
+          },
+        }}
+      />
+      
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center">
           <Bell className="h-6 w-6 mr-2 text-blue-500" />
@@ -115,7 +202,7 @@ const Notification = () => {
         {notificationCount > 0 && (
           <button 
             onClick={handleClearAll}
-            className="text-sm text-red-500 hover:text-red-700 font-medium"
+            className="text-sm text-red-500 hover:text-red-700 font-medium transition-colors"
           >
             Clear All
           </button>

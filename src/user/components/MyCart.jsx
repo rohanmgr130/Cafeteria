@@ -444,12 +444,6 @@ const MyCart = () => {
                 {/* Payment methods */}
                 <div className="mt-6 flex justify-center">
                   <div className="flex gap-2 items-center text-gray-400">
-                    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M20 4H4C2.89 4 2 4.89 2 6V18C2 19.11 2.89 20 4 20H20C21.11 20 22 19.11 22 18V6C22 4.89 21.11 4 20 4Z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M4 9H20M16 16H20M2 5H22V19H2V5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
                     <span className="text-xs text-gray-500">Secure Payment</span>
                   </div>
                 </div>

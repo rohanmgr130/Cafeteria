@@ -206,11 +206,6 @@ function UserManagement() {
                 }`}>
                   {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                 </span>
-                {!user.isVerified && (
-                  <span className="ml-2 px-3 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
-                    Pending
-                  </span>
-                )}
               </div>
               <div className="col-span-1 flex items-center">
                 <a href={`tel:${user.contact}`} className="text-gray-600 hover:text-gray-900 flex items-center">
