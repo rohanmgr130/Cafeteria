@@ -32,6 +32,8 @@ import ResetPasswordPage from './auth/components/Resetpassword';
 import StaffRewardpoints from './staff/Pages/Reward';
 import AddReward from './staff/components/Rewardpoints/addreward';
 import EditReward from './staff/components/Rewardpoints/editreward';
+import Promocode from './staff/components/Promo/Promocode'
+import StaffPromocode from './staff/Pages/Promo';
 
 // =============== Auth Utility Functions ===============
 // Get the current user from localStorage
@@ -277,6 +279,11 @@ function App() {
         <Route path='/staff-rewardpoints/edit-reward/:id' element={
           <StaffRoute>
             <EditReward/>
+          </StaffRoute>
+        } />
+          <Route path='/staff-promos' element={
+          <StaffRoute>
+            <StaffPromocode/>
           </StaffRoute>
         } />
 

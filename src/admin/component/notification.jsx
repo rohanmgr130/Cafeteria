@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ref, onValue, remove } from 'firebase/database';
-import { database } from '../../services/firebase'; // Make sure this path is correct for your project
+import { database } from '../../services/firebase'; 
 import { AlertCircle, Bell, Clock, Trash2, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 

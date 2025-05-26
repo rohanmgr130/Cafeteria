@@ -1,4 +1,4 @@
-// RewardPoints.js - Main reward points listing and management (like MenuManage.js)
+
 import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'

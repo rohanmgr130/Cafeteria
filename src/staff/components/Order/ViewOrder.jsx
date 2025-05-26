@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { notifyOrderStatusUpdate } from '../../../services/notification.services'; // Add this import
+import { notifyOrderStatusUpdate } from '../../../services/notification.services'; 
 
 function ViewOrder() {
   const [orders, setOrders] = useState([]);

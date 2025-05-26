@@ -1,4 +1,4 @@
-// SideNav.js - Fixed version with proper syntax and structure
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { FaHome, FaListAlt, FaClipboardList, FaUtensils, FaBars, FaTimes, FaSignOutAlt, FaGift } from 'react-icons/fa';
@@ -70,6 +70,7 @@ function Nav({ onToggle }) {
     { path: '/staff-category', icon: <FaListAlt className="text-lg" />, label: 'Category' },
     { path: '/staff-menu', icon: <FaUtensils className="text-lg" />, label: 'Menu Management' },
     { path: '/staff-rewardpoints', icon: <FaGift className="text-lg" />, label: 'Reward Points' },
+    { path: '/staff-promos', icon: <FaGift className="text-lg" />, label: 'Promo Codes' },
     // Special case for notifications with badge
     { 
       path: '/staff-notification', 

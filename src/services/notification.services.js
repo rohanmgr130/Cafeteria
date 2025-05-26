@@ -220,7 +220,7 @@ export const broadcastReward = async (rewardData) => {
       break;
     default:
       message = `You received a new reward!`;
-      icon = '🏆';
+      icon = '🏆 ';
   }
   
   // Use custom description if provided

@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle, Info } from "lucide-react";
 import CashPayment from "./CashPayment";
 import OnlinePayment from "./OnlinePayment";
 import { notifyRoles } from '../../../services/notification.services';
+import axios from "axios";
 
 
 const MyOrder = () => {
@@ -17,9 +18,38 @@ const MyOrder = () => {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [checkoutLoading, setCheckoutLoading] = useState(false);
+    const [loadingVoucher, setLoadingVoucher] = useState(false)
+    
+    const [redeemedPromos, setRedeemedPromos] = useState([]);
+    const [redeemedError, setRedeemedError] = useState("")
+
     
     // Toast state
     const [toast, setToast] = useState(null);
+
+
+    //get my redeem vouchers
+    const getUserRedeemedPromos = async (userId) => {
+  try {
+    setLoadingVoucher(true);
+    setError('');
+
+    const res = await axios.get(
+      `${process.env.REACT_APP_API_BASE_URL}/api/staff/get-my-promo/${userId}`
+    );
+
+    if (res.data.success) {
+      setRedeemedPromos(res.data.data);
+    } else {
+      setRedeemedError(res.data.message || 'Failed to fetch redeemed promos');
+    }
+
+    setLoadingVoucher(false);
+  } catch (err) {
+    setLoadingVoucher(false);
+    setRedeemedError(err.response?.data?.message || 'An error occurred while fetching promos');
+  }
+};
 
     // Show toast notification
     const showToast = (message, type = "info") => {
@@ -66,7 +96,7 @@ const MyOrder = () => {
     };
 
     // Cash order payment
-    const handlePlaceOrder = async() => {
+    const handlePlaceOrder = async(totalAmt) => {
         try {
             setCheckoutLoading(true);
             
@@ -87,7 +117,8 @@ const MyOrder = () => {
                     orderMethod: "cash-on",
                     additionalInfo: {
                         orderNote: "Cash on order"
-                    }
+                    },
+                    discountAmt: totalAmt || 0
                 })
             });
 
@@ -251,6 +282,13 @@ const MyOrder = () => {
             showToast("Please login to view your cart", "error");
         }
     }, [userId]);
+
+    useEffect(() => {
+        const userId = localStorage.getItem("id")
+  if (userId) {
+    getUserRedeemedPromos(userId);
+  }
+}, []);
   
     return (
         <div className="max-w-md mx-auto py-8 relative">
@@ -336,6 +374,9 @@ const MyOrder = () => {
                     checkoutLoading={checkoutLoading}
                     cartDetails={cartDetails}
                     refreshCartDetails={refreshCartDetails}
+                    redeemedPromos={redeemedPromos}
+                    redeemedError={redeemedError} 
+                    loadingVoucher={loadingVoucher}
                 />
             ) :
              (

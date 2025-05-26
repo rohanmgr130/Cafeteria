@@ -1,4 +1,4 @@
-// AddReward.js - Add new reward item component (like CreateItem.js)
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Nav from '../Nav';
 import { useNavigate } from 'react-router-dom';

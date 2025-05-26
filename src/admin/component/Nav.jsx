@@ -3,13 +3,13 @@ import { FaHome, FaShoppingCart, FaUsers, FaUserFriends, FaSignOutAlt, FaTicketA
 import { Bell } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
-import { database } from '../../services/firebase'; // Ensure this path matches your project structure
+import { database } from '../../services/firebase'; 
 
 const Nav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [notificationCount, setNotificationCount] = useState(0);
-  const [role] = useState('admin'); // Default role - same as your Notification component
+  const [role] = useState('admin');
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Helper function to determine if a link is active

@@ -1,4 +1,4 @@
-// EditReward.js - Edit reward item component (like EditMenu.js)
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import Nav from '../Nav';
 import { useNavigate, useParams } from 'react-router-dom';

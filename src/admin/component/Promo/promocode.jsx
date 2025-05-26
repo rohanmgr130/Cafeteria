@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { toast, Toaster } from 'react-hot-toast';
-import { broadcastPromocode } from '../../../services/notification.services'; // Adjust path as needed
+import { broadcastPromocode } from '../../../services/notification.services'; 
 
 function Promo() {
   // States for form inputs

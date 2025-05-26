@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Info } from 'lucide-react';
 
 // Cash payment component with promo code support
-const CashPayment = ({ cartTotal, onPlaceOrder, loading, checkoutLoading, cartDetails, refreshCartDetails }) => {
+const CashPayment = ({ cartTotal, onPlaceOrder, loading, checkoutLoading, cartDetails, refreshCartDetails, redeemedPromos, redeemedError, loadingVoucher }) => {
   // Toast state
   const [toast, setToast] = useState(null);
   const [promoCode, setPromoCode] = useState("");
@@ -14,6 +14,8 @@ const CashPayment = ({ cartTotal, onPlaceOrder, loading, checkoutLoading, cartDe
   const [discount, setDiscount] = useState(0);
   const [finalTotal, setFinalTotal] = useState(cartTotal);
   const userId = localStorage.getItem('id');
+  const[selectedPromo, setSelectedPromo] = useState(null)
+
 
   // Update finalTotal whenever cartTotal or discount changes
   useEffect(() => {
@@ -35,14 +37,14 @@ const CashPayment = ({ cartTotal, onPlaceOrder, loading, checkoutLoading, cartDe
   }, [cartTotal, discount, cartDetails]);
 
   // Handle place order with toast validation
-  const handlePlaceOrder = () => {
-    if (!finalTotal || finalTotal <= 0) {
+  const handlePlaceOrder = (finalTotalAmt) => {
+    if (!finalTotalAmt || finalTotalAmt <= 0) {
       showToast("Your cart is empty", "error");
       return;
     }
     
     showToast("Processing your order...", "info");
-    onPlaceOrder();
+    onPlaceOrder(finalTotalAmt);
   };
 
   // Apply promo code function
@@ -106,6 +108,16 @@ const CashPayment = ({ cartTotal, onPlaceOrder, loading, checkoutLoading, cartDe
     }, 3000);
   };
 
+  const discountAmt= selectedPromo
+  ? (cartTotal * selectedPromo.discountPercentage) / 100
+  : 0;
+
+  const finalTotalAmt = cartTotal - discountAmt
+
+
+
+
+
   return (
     <div className="p-6 bg-white rounded-lg shadow-md relative">
       {/* Toast notification */}
@@ -162,6 +174,38 @@ const CashPayment = ({ cartTotal, onPlaceOrder, loading, checkoutLoading, cartDe
           </p>
         )}
       </div>
+
+   {loadingVoucher ? (
+  <p>Loading redeemed promos...</p>
+) : redeemedError ? (
+  <p className="text-red-600">{redeemedError}</p>
+) : redeemedPromos.length === 0 ? (
+  <p>No redeemed promos yet.</p>
+) : (
+  <div className="space-y-2">
+    <label htmlFor="redeemedPromo" className="block text-sm font-medium text-gray-700 mb-1">
+      Select a Redeemed Voucher:
+    </label>
+    <select
+      id="redeemedPromo"
+      value={selectedPromo?._id || ''}
+      onChange={(e) => {
+        const promo = redeemedPromos.find((p) => p._id === e.target.value);
+        setSelectedPromo(promo || null);
+      }}
+      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+    >
+      <option value="">-- Choose a promo --</option>
+      {redeemedPromos.map((promo) => (
+        <option key={promo._id} value={promo._id}>
+          {promo.pcode} — {promo.discountPercentage}% off
+        </option>
+      ))}
+    </select>
+  </div>
+)}
+
+
       
       <div className="mb-6">
         <div className="flex justify-between mb-2">
@@ -173,21 +217,24 @@ const CashPayment = ({ cartTotal, onPlaceOrder, loading, checkoutLoading, cartDe
           )}
         </div>
         
-        {discount > 0 && (
-          <div className="flex justify-between mb-2 text-green-600">
-            <span>Discount:</span>
-            <span>- Rs. {discount.toFixed(2)}</span>
-          </div>
-        )}
-        
-        <div className="border-t pt-2 mt-2 flex justify-between font-bold">
-          <span>Total Amount:</span>
-          {loading ? (
-            <span className="font-medium">Loading...</span>
-          ) : (
-            <span className="font-medium">Rs. {finalTotal?.toFixed(2) || '0.00'}</span>
-          )}
-        </div>
+        {selectedPromo && discountAmt > 0 && (
+  <div className="flex justify-between mb-2 text-green-600">
+    <span>
+      Discount ({selectedPromo.discountPercentage}% - {selectedPromo.pcode}):
+    </span>
+    <span>- Rs. {discountAmt.toFixed(2)}</span>
+  </div>
+)}
+
+<div className="border-t pt-2 mt-2 flex justify-between font-bold">
+  <span>Total Amount:</span>
+  {loading ? (
+    <span className="font-medium">Loading...</span>
+  ) : (
+    <span className="font-medium">Rs. {finalTotalAmt.toFixed(2)} </span>
+  )}
+</div>
+
       </div>
       
       <div className="mt-4">
@@ -195,7 +242,7 @@ const CashPayment = ({ cartTotal, onPlaceOrder, loading, checkoutLoading, cartDe
           Collect your order from college canteen.
         </p>
         <button 
-          onClick={handlePlaceOrder}
+          onClick={()=>handlePlaceOrder(finalTotalAmt)}
           disabled={checkoutLoading || !finalTotal || finalTotal <= 0}
           className={`w-full py-3 rounded-md font-medium transition duration-200 ${
             !checkoutLoading && finalTotal > 0
